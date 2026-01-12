@@ -65,7 +65,7 @@ func TestGetProviderForModel(t *testing.T) {
 	}{
 		{
 			name:     "known gemini model (migrated to openrouter)",
-			model:    "gemini-2.5-pro",
+			model:    "gemini-3-flash",
 			expected: "openrouter",
 		},
 		{

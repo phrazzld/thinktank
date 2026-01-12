@@ -40,7 +40,7 @@ func TestModernCLIOutput_BasicWorkflow(t *testing.T) {
 
 	// Set up test flags for multiple models
 	flags := env.DefaultFlags
-	flags.Model = []string{"gemini-2.5-pro", "gemini-2.5-flash"}
+	flags.Model = []string{"gemini-3-flash", "gemini-3-flash"}
 	flags.Instructions = "Brief analysis:"
 	flags.DryRun = true // Use dry-run to avoid actual API calls
 
@@ -62,8 +62,8 @@ func TestModernCLIOutput_BasicWorkflow(t *testing.T) {
 	// Verify modern clean output elements (CI mode uses ASCII symbols)
 	expectedElements := []string{
 		"Processing 2 models", // Clean initialization message
-		"gemini-2.5-pro",      // Model names
-		"gemini-2.5-flash",
+		"gemini-3-flash",      // Model names
+		"gemini-3-flash",
 		"SUMMARY",              // Uppercase section headers
 		"* 2 models processed", // ASCII bullet points in CI mode
 		"OUTPUT FILES",         // File listing section
@@ -166,7 +166,7 @@ func TestModernCLIOutput_InteractiveMode(t *testing.T) {
 
 	// Set up test flags
 	flags := env.DefaultFlags
-	flags.Model = []string{"gemini-2.5-pro"}
+	flags.Model = []string{"gemini-3-flash"}
 	flags.Instructions = "Analyze briefly:"
 	flags.DryRun = true
 
@@ -253,7 +253,7 @@ func TestModernCLIOutput_ErrorScenarios(t *testing.T) {
 	t.Run("Missing files", func(t *testing.T) {
 		// Set up test flags for missing file
 		flags := env.DefaultFlags
-		flags.Model = []string{"gemini-2.5-pro"}
+		flags.Model = []string{"gemini-3-flash"}
 		flags.Instructions = "Test:"
 		flags.DryRun = true
 
@@ -290,7 +290,7 @@ func TestModernCLIOutput_MultipleModels(t *testing.T) {
 
 	// Set up test flags for multiple models
 	flags := env.DefaultFlags
-	flags.Model = []string{"gemini-2.5-pro", "gemini-2.5-flash"}
+	flags.Model = []string{"gemini-3-flash", "gemini-3-flash"}
 	flags.Instructions = "Provide analysis:"
 	flags.DryRun = true
 
@@ -315,7 +315,7 @@ func TestModernCLIOutput_MultipleModels(t *testing.T) {
 		}
 
 		// Should mention both models
-		models := []string{"gemini-2.5-pro", "gemini-2.5-flash"}
+		models := []string{"gemini-3-flash", "gemini-3-flash"}
 		for _, model := range models {
 			if !strings.Contains(output, model) {
 				t.Errorf("Expected model %s to be mentioned in output", model)
@@ -371,7 +371,7 @@ func TestModernCLIOutput_TerminalWidthAdaptation(t *testing.T) {
 
 	// Set up test flags
 	flags := env.DefaultFlags
-	flags.Model = []string{"gemini-2.5-pro"}
+	flags.Model = []string{"gemini-3-flash"}
 	flags.Instructions = "Brief analysis:"
 	flags.DryRun = true
 

@@ -24,8 +24,8 @@ INSTRUCTIONS_FILE="$SCRIPT_DIR/../lib/workloads/instructions/simple-prompt.md"
 
 # Use multiple instances of fast models to test concurrency
 MODELS_TO_RUN=(
-    "gemini-2.5-flash" "gemini-2.5-flash" "gemini-2.5-flash" "gemini-2.5-flash"
-    "o4-mini" "o4-mini" "o4-mini" "o4-mini"
+    "gemini-3-flash" "gemini-3-flash" "gemini-3-flash" "gemini-3-flash"
+    "o3" "o3" "o3" "o3"
 )
 
 # Build model arguments

@@ -60,7 +60,7 @@ func TestStreamingTokenization_HandlesLargeInputs(t *testing.T) {
 			defer cancel()
 
 			start := time.Now()
-			tokens, err := streamingTokenizer.CountTokensStreaming(ctx, reader, "gpt-4.1")
+			tokens, err := streamingTokenizer.CountTokensStreaming(ctx, reader, "gpt-5.2")
 			duration := time.Since(start)
 
 			if tt.expectError {
@@ -95,13 +95,13 @@ func TestStreamingTokenization_MatchesInMemoryResults(t *testing.T) {
 
 			// Test streaming approach
 			reader := strings.NewReader(input)
-			streamingTokens, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
+			streamingTokens, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-5.2")
 			require.NoError(t, err)
 
 			// Test in-memory approach
 			regularTokenizer, err := manager.GetTokenizer("openrouter")
 			require.NoError(t, err)
-			inMemoryTokens, err := regularTokenizer.CountTokens(context.Background(), input, "gpt-4.1")
+			inMemoryTokens, err := regularTokenizer.CountTokens(context.Background(), input, "gpt-5.2")
 			require.NoError(t, err)
 
 			// Results should match
@@ -130,7 +130,7 @@ func TestStreamingTokenization_RespectsContextCancellation(t *testing.T) {
 	defer cancel()
 
 	start := time.Now()
-	_, err = streamingTokenizer.CountTokensStreaming(ctx, reader, "gpt-4.1")
+	_, err = streamingTokenizer.CountTokensStreaming(ctx, reader, "gpt-5.2")
 	duration := time.Since(start)
 
 	assert.Error(t, err, "Should return error when context is cancelled")
@@ -158,7 +158,7 @@ func BenchmarkStreamingVsInMemory(b *testing.B) {
 
 			perftest.RunBenchmark(b, "StreamingVsInMemory_InMemory_"+sizeStr, func(b *testing.B) {
 				for i := 0; i < b.N; i++ {
-					_, err := tokenizer.CountTokens(context.Background(), text, "gpt-4.1")
+					_, err := tokenizer.CountTokens(context.Background(), text, "gpt-5.2")
 					if err != nil {
 						b.Fatal(err)
 					}
@@ -175,7 +175,7 @@ func BenchmarkStreamingVsInMemory(b *testing.B) {
 			perftest.RunBenchmark(b, "StreamingVsInMemory_Streaming_"+sizeStr, func(b *testing.B) {
 				for i := 0; i < b.N; i++ {
 					reader := strings.NewReader(text)
-					_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
+					_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-5.2")
 					if err != nil {
 						b.Fatal(err)
 					}
@@ -409,7 +409,7 @@ func TestStreamingTokenization_CorrectTokenCountsWithDifferentMethods(t *testing
 			defer cancel1()
 
 			start1 := time.Now()
-			tokens1, err := streamingTokenizer.CountTokensStreaming(ctx1, reader1, "gpt-4.1")
+			tokens1, err := streamingTokenizer.CountTokensStreaming(ctx1, reader1, "gpt-5.2")
 			duration1 := time.Since(start1)
 			require.NoError(t, err)
 
@@ -422,7 +422,7 @@ func TestStreamingTokenization_CorrectTokenCountsWithDifferentMethods(t *testing
 				defer cancel2()
 
 				start2 := time.Now()
-				tokens2, err := adaptiveTokenizer.CountTokensStreamingWithAdaptiveChunking(ctx2, reader2, "gpt-4.1", tt.inputSize)
+				tokens2, err := adaptiveTokenizer.CountTokensStreamingWithAdaptiveChunking(ctx2, reader2, "gpt-5.2", tt.inputSize)
 				duration2 := time.Since(start2)
 				require.NoError(t, err)
 
@@ -469,7 +469,7 @@ func BenchmarkRealisticTokenizationPerformance(b *testing.B) {
 			perftest.RunBenchmark(b, "RealisticTokenizationPerformance_Regular_"+size.name, func(b *testing.B) {
 				for i := 0; i < b.N; i++ {
 					reader := strings.NewReader(text)
-					_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
+					_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-5.2")
 					if err != nil {
 						b.Fatal(err)
 					}
@@ -489,7 +489,7 @@ func BenchmarkRealisticTokenizationPerformance(b *testing.B) {
 			perftest.RunBenchmark(b, "RealisticTokenizationPerformance_Adaptive_"+size.name, func(b *testing.B) {
 				for i := 0; i < b.N; i++ {
 					reader := strings.NewReader(text)
-					_, err := adaptiveTokenizer.CountTokensStreamingWithAdaptiveChunking(context.Background(), reader, "gpt-4.1", size.size)
+					_, err := adaptiveTokenizer.CountTokensStreamingWithAdaptiveChunking(context.Background(), reader, "gpt-5.2", size.size)
 					if err != nil {
 						b.Fatal(err)
 					}

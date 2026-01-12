@@ -50,18 +50,18 @@ func TestGetRateLimiterForModel(t *testing.T) {
 		},
 		{
 			name:           "Known model with no MaxConcurrentRequests uses global rate limiter",
-			modelName:      "gpt-4.1", // Use actual model from the registry
+			modelName:      "gpt-5.2", // Use actual model from the registry
 			expectedGlobal: true,
 		},
 		{
 			name:           "Known model uses appropriate rate limiter",
-			modelName:      "gemini-2.5-pro", // Use actual model from the registry
+			modelName:      "gemini-3-flash", // Use actual model from the registry
 			expectedGlobal: true,             // Will be true unless the model has MaxConcurrentRequests set
 		},
 		{
 			name:           "Model with MaxConcurrentRequests creates model-specific rate limiter",
-			modelName:      "openrouter/deepseek/deepseek-r1-0528", // Model with MaxConcurrentRequests: &[]int{1}[0]
-			expectedGlobal: false,                                  // Should create model-specific rate limiter
+			modelName:      "model3", // Test model with MaxConcurrentRequests: &[]int{1}[0]
+			expectedGlobal: false,    // Should create model-specific rate limiter
 		},
 	}
 
@@ -105,8 +105,8 @@ func TestGetRateLimiterForModelConcurrency(t *testing.T) {
 		rateLimiterMutex:  sync.RWMutex{},
 	}
 
-	// Use a real model from the registry that has MaxConcurrentRequests set
-	testModel := "openrouter/deepseek/deepseek-r1-0528"
+	// Use a test model from the registry that has MaxConcurrentRequests set
+	testModel := "model3"
 
 	// Test concurrent access
 	const numGoroutines = 10
@@ -156,8 +156,8 @@ func TestGetRateLimiterForModelCaching(t *testing.T) {
 		rateLimiterMutex:  sync.RWMutex{},
 	}
 
-	// Use a real model from the registry that has MaxConcurrentRequests set
-	testModel := "openrouter/deepseek/deepseek-r1-0528"
+	// Use a test model from the registry that has MaxConcurrentRequests set
+	testModel := "model3"
 
 	// Get rate limiter first time
 	limiter1 := orchestrator.getRateLimiterForModel(testModel)

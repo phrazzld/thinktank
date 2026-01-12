@@ -42,7 +42,7 @@ func TestTokenCountingService_LogsFallbackEvents(t *testing.T) {
 	}
 
 	// This should trigger the tokenizer failure and subsequent fallback
-	result, err := service.CountTokensForModel(ctx, req, "gpt-4.1")
+	result, err := service.CountTokensForModel(ctx, req, "gpt-5.2")
 
 	require.NoError(t, err, "Service should handle tokenization failure gracefully")
 	assert.Equal(t, "estimation", result.TokenizerUsed, "Should fallback to estimation")
@@ -83,7 +83,7 @@ func TestTokenCountingService_FallbackOnSpecificTokenizationFailure(t *testing.T
 		SafetyMarginPercent: 20,
 	}
 
-	result, err := service.CountTokensForModel(ctx, req, "gpt-4.1")
+	result, err := service.CountTokensForModel(ctx, req, "gpt-5.2")
 
 	require.NoError(t, err, "Service should handle tokenization failure gracefully")
 	assert.Equal(t, "estimation", result.TokenizerUsed, "Should fallback to estimation")
@@ -105,7 +105,7 @@ func TestTokenCountingService_FallbackWithEmptyContext(t *testing.T) {
 		SafetyMarginPercent: 20,
 	}
 
-	result, err := service.CountTokensForModel(ctx, req, "gpt-4.1")
+	result, err := service.CountTokensForModel(ctx, req, "gpt-5.2")
 
 	require.NoError(t, err, "Service should handle empty context gracefully")
 	assert.Equal(t, 0, result.TotalTokens, "Empty context should result in 0 tokens")

@@ -18,7 +18,7 @@ import (
 const (
 	// Default values
 	DefaultOutputFile      = "PLAN.md"
-	DefaultModel           = "gemini-2.5-pro"
+	DefaultModel           = "gemini-3-flash"
 	APIKeyEnvVar           = "GEMINI_API_KEY" // Deprecated: kept for backward compatibility only
 	APIEndpointEnvVar      = "GEMINI_API_URL" // Deprecated: kept for backward compatibility only
 	OpenAIAPIKeyEnvVar     = "OPENAI_API_KEY" // Deprecated: kept for backward compatibility only

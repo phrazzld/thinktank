@@ -143,7 +143,7 @@ func TestTokenCountingService_CheckModelCompatibility_ErrorPaths(t *testing.T) {
 				failingManager := &MockFailingTokenizerManager{ShouldFailAll: true}
 				return NewTokenCountingServiceWithManagerAndLogger(failingManager, mockLogger)
 			},
-			model:            "gpt-4.1",
+			model:            "gpt-5.2",
 			expectError:      false,
 			expectFallback:   true,
 			logShouldContain: "falling back to estimation",
@@ -156,7 +156,7 @@ func TestTokenCountingService_CheckModelCompatibility_ErrorPaths(t *testing.T) {
 				manager := &MockTokenizerManagerWithFailingTokenizer{}
 				return NewTokenCountingServiceWithManagerAndLogger(manager, mockLogger)
 			},
-			model:            "gpt-4.1",
+			model:            "gpt-5.2",
 			expectError:      false,
 			expectFallback:   true,
 			logShouldContain: "falling back to estimation",

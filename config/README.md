@@ -11,12 +11,12 @@ As of the latest version, thinktank uses hardcoded model definitions in the `int
 The following models are built into thinktank:
 
 ### OpenAI Models
-- `gpt-4.1` - Latest GPT-4 model with 1M token context window
-- `o4-mini` - Optimized OpenAI model with reasoning capabilities
+- `gpt-5.2` - Latest GPT-4 model with 1M token context window
+- `o3` - Optimized OpenAI model with reasoning capabilities
 
 ### Gemini Models
-- `gemini-2.5-pro` - Google's advanced model with 1M token context
-- `gemini-2.5-flash` - Faster Gemini variant with 1M token context
+- `gemini-3-flash` - Google's advanced model with 1M token context
+- `gemini-3-flash` - Faster Gemini variant with 1M token context
 
 ### OpenRouter Models
 - `openrouter/deepseek/deepseek-chat-v3-0324` - DeepSeek chat model
@@ -41,10 +41,10 @@ Use thinktank by specifying a model with the `--model` flag:
 
 ```bash
 # Using OpenAI models
-thinktank --model gpt-4.1 --instructions task.md src/
+thinktank --model gpt-5.2 --instructions task.md src/
 
 # Using Gemini models
-thinktank --model gemini-2.5-pro --instructions task.md src/
+thinktank --model gemini-3-flash --instructions task.md src/
 
 # Using OpenRouter models
 thinktank --model openrouter/deepseek/deepseek-r1 --instructions task.md src/

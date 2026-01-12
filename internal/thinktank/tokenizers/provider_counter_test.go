@@ -30,7 +30,7 @@ func TestProviderTokenCounter_CountTokens(t *testing.T) {
 		{
 			name:           "empty text returns zero tokens",
 			text:           "",
-			modelName:      "gpt-4.1",
+			modelName:      "gpt-5.2",
 			expectedTokens: 0,
 			expectError:    false,
 			expectedMethod: "tiktoken",
@@ -38,7 +38,7 @@ func TestProviderTokenCounter_CountTokens(t *testing.T) {
 		{
 			name:           "openai model via openrouter uses tiktoken-o200k",
 			text:           "Hello world, this is a test message",
-			modelName:      "gpt-4.1",
+			modelName:      "gpt-5.2",
 			expectedTokens: 8, // Expected tokens with tiktoken-o200k
 			expectError:    false,
 			expectedMethod: "tiktoken-o200k",
@@ -46,15 +46,15 @@ func TestProviderTokenCounter_CountTokens(t *testing.T) {
 		{
 			name:           "gemini model via openrouter uses tiktoken-o200k",
 			text:           "Hello world, this is a test message",
-			modelName:      "gemini-2.5-pro",
+			modelName:      "gemini-3-flash",
 			expectedTokens: 8, // Expected tokens with tiktoken-o200k
 			expectError:    false,
 			expectedMethod: "tiktoken-o200k",
 		},
 		{
-			name:           "openrouter model uses tiktoken-o200k",
+			name:           "llama model via openrouter uses tiktoken-o200k",
 			text:           "Hello world, this is a test message",
-			modelName:      "openrouter/meta-llama/llama-4-maverick",
+			modelName:      "llama-4-maverick",
 			expectedTokens: 8, // Accurate tokenization with o200k_base
 			expectError:    false,
 			expectedMethod: "tiktoken-o200k",
@@ -70,15 +70,15 @@ func TestProviderTokenCounter_CountTokens(t *testing.T) {
 		{
 			name:           "o3 model via openrouter uses tiktoken-o200k",
 			text:           "Hello world",
-			modelName:      "o3",
+			modelName:      "gpt-5.2",
 			expectedTokens: 2, // "Hello" and "world" as separate tokens
 			expectError:    false,
 			expectedMethod: "tiktoken-o200k",
 		},
 		{
-			name:           "o4-mini model via openrouter uses tiktoken-o200k",
+			name:           "o3 model via openrouter uses tiktoken-o200k",
 			text:           "Hello world",
-			modelName:      "o4-mini",
+			modelName:      "gpt-5.2",
 			expectedTokens: 2, // "Hello" and "world" as separate tokens
 			expectError:    false,
 			expectedMethod: "tiktoken-o200k",
@@ -120,17 +120,17 @@ func TestProviderTokenCounter_SupportsModel(t *testing.T) {
 	}{
 		{
 			name:      "openai model is supported",
-			modelName: "gpt-4.1",
+			modelName: "gpt-5.2",
 			expected:  true,
 		},
 		{
 			name:      "gemini model is supported",
-			modelName: "gemini-2.5-pro",
+			modelName: "gemini-3-flash",
 			expected:  true,
 		},
 		{
-			name:      "openrouter model is supported (uses tiktoken-o200k)",
-			modelName: "openrouter/meta-llama/llama-4-maverick",
+			name:      "llama model is supported (uses tiktoken-o200k)",
+			modelName: "llama-4-maverick",
 			expected:  true,
 		},
 		{
@@ -140,12 +140,12 @@ func TestProviderTokenCounter_SupportsModel(t *testing.T) {
 		},
 		{
 			name:      "o3 model is supported",
-			modelName: "o3",
+			modelName: "gpt-5.2",
 			expected:  true,
 		},
 		{
-			name:      "o4-mini model is supported",
-			modelName: "o4-mini",
+			name:      "o3 model is supported",
+			modelName: "gpt-5.2",
 			expected:  true,
 		},
 	}
@@ -171,17 +171,17 @@ func TestProviderTokenCounter_GetEncoding(t *testing.T) {
 	}{
 		{
 			name:          "openai model via openrouter returns o200k_base",
-			modelName:     "gpt-4.1",
+			modelName:     "gpt-5.2",
 			expectedStart: "o200k_base",
 		},
 		{
 			name:          "gemini model via openrouter returns o200k_base",
-			modelName:     "gemini-2.5-pro",
+			modelName:     "gemini-3-flash",
 			expectedStart: "o200k_base",
 		},
 		{
-			name:          "openrouter model returns o200k_base",
-			modelName:     "openrouter/meta-llama/llama-4-maverick",
+			name:          "llama model returns o200k_base",
+			modelName:     "llama-4-maverick",
 			expectedStart: "o200k_base",
 		},
 		{
@@ -214,17 +214,17 @@ func TestProviderTokenCounter_GetTokenizerType(t *testing.T) {
 	}{
 		{
 			name:         "openai model via openrouter returns tiktoken-o200k",
-			modelName:    "gpt-4.1",
+			modelName:    "gpt-5.2",
 			expectedType: "tiktoken-o200k",
 		},
 		{
 			name:         "gemini model via openrouter returns tiktoken-o200k",
-			modelName:    "gemini-2.5-pro",
+			modelName:    "gemini-3-flash",
 			expectedType: "tiktoken-o200k",
 		},
 		{
-			name:         "openrouter model returns tiktoken-o200k",
-			modelName:    "openrouter/meta-llama/llama-4-maverick",
+			name:         "llama model returns tiktoken-o200k",
+			modelName:    "llama-4-maverick",
 			expectedType: "tiktoken-o200k",
 		},
 		{
@@ -234,7 +234,7 @@ func TestProviderTokenCounter_GetTokenizerType(t *testing.T) {
 		},
 		{
 			name:         "o3 model via openrouter returns tiktoken-o200k",
-			modelName:    "o3",
+			modelName:    "gpt-5.2",
 			expectedType: "tiktoken-o200k",
 		},
 	}
@@ -260,17 +260,17 @@ func TestProviderTokenCounter_IsAccurate(t *testing.T) {
 	}{
 		{
 			name:         "openai model is accurate",
-			modelName:    "gpt-4.1",
+			modelName:    "gpt-5.2",
 			expectedType: true,
 		},
 		{
 			name:         "gemini model is accurate",
-			modelName:    "gemini-2.5-pro",
+			modelName:    "gemini-3-flash",
 			expectedType: true,
 		},
 		{
-			name:         "openrouter model is accurate",
-			modelName:    "openrouter/meta-llama/llama-4-maverick",
+			name:         "llama model is accurate",
+			modelName:    "llama-4-maverick",
 			expectedType: true,
 		},
 		{
@@ -302,12 +302,12 @@ func TestProviderTokenCounter_LazyLoading(t *testing.T) {
 	assert.NotNil(t, counter.fallback)
 
 	// After using any OpenRouter model, openrouter tokenizer should be initialized
-	_, err := counter.CountTokens(context.Background(), "test", "gpt-4.1")
+	_, err := counter.CountTokens(context.Background(), "test", "gpt-5.2")
 	require.NoError(t, err)
 	assert.NotNil(t, counter.openrouter) // Now initialized
 
 	// Using another model should reuse the same tokenizer
-	_, err = counter.CountTokens(context.Background(), "test", "gemini-2.5-pro")
+	_, err = counter.CountTokens(context.Background(), "test", "gemini-3-flash")
 	require.NoError(t, err)
 	assert.NotNil(t, counter.openrouter) // Still initialized
 }
@@ -319,7 +319,7 @@ func TestProviderTokenCounter_ClearCache(t *testing.T) {
 	counter := NewProviderTokenCounter(logger)
 
 	// Initialize openrouter tokenizer by using it
-	_, err := counter.CountTokens(context.Background(), "test", "gpt-4.1")
+	_, err := counter.CountTokens(context.Background(), "test", "gpt-5.2")
 	require.NoError(t, err)
 
 	// Verify openrouter tokenizer is initialized
@@ -391,7 +391,7 @@ func TestProviderTokenCounter_Logging(t *testing.T) {
 	counter := NewProviderTokenCounter(testLogger)
 
 	// Test successful tokenization logging
-	_, err := counter.CountTokens(context.Background(), "test message", "gpt-4.1")
+	_, err := counter.CountTokens(context.Background(), "test message", "gpt-5.2")
 	require.NoError(t, err)
 
 	// Should have logged tokenizer selection (debug level)

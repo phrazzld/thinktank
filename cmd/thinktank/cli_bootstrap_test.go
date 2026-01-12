@@ -229,14 +229,14 @@ func TestParseFlags_SynthesisModel(t *testing.T) {
 	}{
 		{
 			name:          "Set synthesis model",
-			args:          []string{"--synthesis-model=gpt-4.1"},
-			expectedModel: "gpt-4.1",
+			args:          []string{"--synthesis-model=gpt-5.2"},
+			expectedModel: "gpt-5.2",
 			expectError:   false,
 		},
 		{
 			name:          "Set synthesis model with space",
-			args:          []string{"--synthesis-model", "gemini-2.5-pro"},
-			expectedModel: "gemini-2.5-pro",
+			args:          []string{"--synthesis-model", "gemini-3-flash"},
+			expectedModel: "gemini-3-flash",
 			expectError:   false,
 		},
 		{

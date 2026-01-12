@@ -70,7 +70,7 @@ func TestTokenizerManagerWithPerformanceMonitoring_TracksFailures(t *testing.T) 
 
 	// Make 5 calls with alternating success/failure pattern
 	for i := 0; i < 5; i++ {
-		_, _ = tokenizer.CountTokens(ctx, "test text", "gemini-2.5-pro") // Ignore errors
+		_, _ = tokenizer.CountTokens(ctx, "test text", "gemini-3-flash") // Ignore errors
 	}
 
 	metrics := manager.GetMetrics("gemini")

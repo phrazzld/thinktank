@@ -120,8 +120,8 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
 				APIKey:           "",
-				ModelNames:       []string{"gemini-2.5-pro"},
-				SynthesisModel:   "gpt-4.1",
+				ModelNames:       []string{"gemini-3-flash"},
+				SynthesisModel:   "gpt-5.2",
 			},
 			mockGetenv: func(key string) string {
 				if key == OpenRouterAPIKeyEnvVar {
@@ -138,8 +138,8 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
 				APIKey:           "",
-				ModelNames:       []string{"gemini-2.5-pro"},
-				SynthesisModel:   "gpt-4.1",
+				ModelNames:       []string{"gemini-3-flash"},
+				SynthesisModel:   "gpt-5.2",
 			},
 			mockGetenv: func(key string) string {
 				if key == OpenRouterAPIKeyEnvVar {
@@ -157,7 +157,7 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 				InstructionsFile:           "instructions.md",
 				Paths:                      []string{"testfile"},
 				APIKey:                     "",
-				ModelNames:                 []string{"gemini-2.5-pro"},
+				ModelNames:                 []string{"gemini-3-flash"},
 				MaxConcurrentRequests:      1000,
 				RateLimitRequestsPerMinute: 10000,
 			},
@@ -176,7 +176,7 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
 				APIKey:           "",
-				ModelNames:       []string{"gemini-2.5-pro"},
+				ModelNames:       []string{"gemini-3-flash"},
 				Timeout:          1 * time.Hour, // Very long timeout
 			},
 			mockGetenv: func(key string) string {
@@ -197,7 +197,7 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 				Exclude:          "*.test.*,node_modules",
 				ExcludeNames:     ".git,vendor,target",
 				APIKey:           "",
-				ModelNames:       []string{"gemini-2.5-pro"},
+				ModelNames:       []string{"gemini-3-flash"},
 				DirPermissions:   0755,
 				FilePermissions:  0644,
 				Verbose:          true,
@@ -218,7 +218,7 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
 				APIKey:           "",
-				ModelNames:       []string{"gemini-2.5-pro", "gpt-4.1"},
+				ModelNames:       []string{"gemini-3-flash", "gpt-5.2"},
 				PartialSuccessOk: true,
 			},
 			mockGetenv: func(key string) string {
@@ -235,7 +235,7 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
 				APIKey:           "",
-				ModelNames:       []string{"gemini-2.5-pro"},
+				ModelNames:       []string{"gemini-3-flash"},
 				AuditLogFile:     "/var/log/thinktank-audit.jsonl",
 				SplitLogs:        true,
 			},

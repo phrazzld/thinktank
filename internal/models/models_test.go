@@ -18,55 +18,63 @@ func TestGetModelInfo(t *testing.T) {
 		wantError      bool
 		errorContains  string
 	}{
-		// Valid models - OpenAI (migrated to OpenRouter)
+		// Valid models - Anthropic Claude
 		{
-			name:           "gpt-4.1 valid model",
-			modelName:      "gpt-4.1",
+			name:           "claude-opus-4.5 valid model",
+			modelName:      "claude-opus-4.5",
 			wantProvider:   "openrouter",
-			wantAPIModelID: "openai/gpt-4.1",
+			wantAPIModelID: "anthropic/claude-opus-4.5",
 			wantError:      false,
 		},
 		{
-			name:           "o4-mini valid model",
-			modelName:      "o4-mini",
+			name:           "claude-sonnet-4.5 valid model",
+			modelName:      "claude-sonnet-4.5",
 			wantProvider:   "openrouter",
-			wantAPIModelID: "openai/o4-mini",
+			wantAPIModelID: "anthropic/claude-sonnet-4.5",
 			wantError:      false,
 		},
-		// Valid models - GPT-5
+		// Valid models - OpenAI
 		{
-			name:           "gpt-5 valid model",
-			modelName:      "gpt-5",
+			name:           "gpt-5.2 valid model",
+			modelName:      "gpt-5.2",
 			wantProvider:   "openrouter",
-			wantAPIModelID: "openai/gpt-5",
-			wantError:      false,
-		},
-		{
-			name:           "gpt-5-mini valid model",
-			modelName:      "gpt-5-mini",
-			wantProvider:   "openrouter",
-			wantAPIModelID: "openai/gpt-5-mini",
-			wantError:      false,
-		},
-		// Valid models - Gemini (migrated to OpenRouter)
-		{
-			name:           "gemini-2.5-pro valid model",
-			modelName:      "gemini-2.5-pro",
-			wantProvider:   "openrouter",
-			wantAPIModelID: "google/gemini-2.5-pro",
+			wantAPIModelID: "openai/gpt-5.2",
 			wantError:      false,
 		},
 		{
-			name:           "gemini-2.5-flash valid model",
-			modelName:      "gemini-2.5-flash",
+			name:           "deepseek-v3.2 valid model",
+			modelName:      "deepseek-v3.2",
 			wantProvider:   "openrouter",
-			wantAPIModelID: "google/gemini-2.5-flash",
+			wantAPIModelID: "deepseek/deepseek-v3.2",
 			wantError:      false,
 		},
-		// Valid models - OpenRouter
+		// Valid models - Google Gemini
 		{
-			name:           "openrouter model",
-			modelName:      "openrouter/meta-llama/llama-4-maverick",
+			name:           "gemini-3-flash valid model",
+			modelName:      "gemini-3-flash",
+			wantProvider:   "openrouter",
+			wantAPIModelID: "google/gemini-3-flash-preview",
+			wantError:      false,
+		},
+		{
+			name:           "gemini-3-pro valid model",
+			modelName:      "gemini-3-pro",
+			wantProvider:   "openrouter",
+			wantAPIModelID: "google/gemini-3-pro-preview",
+			wantError:      false,
+		},
+		// Valid models - xAI Grok
+		{
+			name:           "grok-4.1-fast valid model",
+			modelName:      "grok-4.1-fast",
+			wantProvider:   "openrouter",
+			wantAPIModelID: "x-ai/grok-4.1-fast",
+			wantError:      false,
+		},
+		// Valid models - Meta Llama
+		{
+			name:           "llama-4-maverick valid model",
+			modelName:      "llama-4-maverick",
 			wantProvider:   "openrouter",
 			wantAPIModelID: "meta-llama/llama-4-maverick",
 			wantError:      false,
@@ -179,12 +187,12 @@ func TestListModelsForProvider(t *testing.T) {
 		expected []string
 	}{
 		{
-			name:     "openai provider",
+			name:     "openai provider (obsolete)",
 			provider: "openai",
 			expected: []string{},
 		},
 		{
-			name:     "gemini provider",
+			name:     "gemini provider (obsolete)",
 			provider: "gemini",
 			expected: []string{},
 		},
@@ -192,21 +200,20 @@ func TestListModelsForProvider(t *testing.T) {
 			name:     "openrouter provider",
 			provider: "openrouter",
 			expected: []string{
-				"gemini-2.5-flash",
-				"gemini-2.5-pro",
-				"gpt-4.1",
-				"gpt-5",
-				"gpt-5-mini",
-				"grok-4",
-				"kimi-k2",
-				"mercury",
-				"o3",
-				"o4-mini",
-				"openrouter/deepseek/deepseek-chat-v3-0324",
-				"openrouter/deepseek/deepseek-chat-v3-0324:free",
-				"openrouter/deepseek/deepseek-r1-0528",
-				"openrouter/deepseek/deepseek-r1-0528:free",
-				"openrouter/meta-llama/llama-4-maverick",
+				"claude-opus-4.5",
+				"claude-sonnet-4.5",
+				"deepseek-v3.2",
+				"deepseek-v3.2-speciale",
+				"devstral-2",
+				"gemini-3-flash",
+				"gemini-3-pro",
+				"glm-4.7",
+				"gpt-5.2",
+				"grok-4.1-fast",
+				"grok-code-fast-1",
+				"kimi-k2-thinking",
+				"llama-4-maverick",
+				"minimax-m2.1",
 			},
 		},
 		{
@@ -266,7 +273,7 @@ func TestListModelsForProvider(t *testing.T) {
 
 // Test benchmarks to verify performance
 func BenchmarkGetModelInfo(b *testing.B) {
-	modelName := "gpt-4.1"
+	modelName := "gemini-3-flash"
 
 	perftest.RunBenchmark(b, "GetModelInfo", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
@@ -279,7 +286,7 @@ func BenchmarkGetModelInfo(b *testing.B) {
 }
 
 func BenchmarkGetProviderDefaultRateLimit(b *testing.B) {
-	provider := "openai"
+	provider := "openrouter"
 
 	perftest.RunBenchmark(b, "GetProviderDefaultRateLimit", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
@@ -289,7 +296,7 @@ func BenchmarkGetProviderDefaultRateLimit(b *testing.B) {
 }
 
 func BenchmarkListModelsForProvider(b *testing.B) {
-	provider := "openai"
+	provider := "openrouter"
 
 	perftest.RunBenchmark(b, "ListModelsForProvider", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
@@ -306,18 +313,23 @@ func TestIsModelSupported(t *testing.T) {
 		expected  bool
 	}{
 		{
-			name:      "valid OpenAI model",
-			modelName: "gpt-4.1",
+			name:      "valid OpenAI model (GPT-5.2)",
+			modelName: "gpt-5.2",
 			expected:  true,
 		},
 		{
 			name:      "valid Gemini model",
-			modelName: "gemini-2.5-pro",
+			modelName: "gemini-3-flash",
 			expected:  true,
 		},
 		{
-			name:      "valid OpenRouter model",
-			modelName: "openrouter/meta-llama/llama-4-maverick",
+			name:      "valid Claude model",
+			modelName: "claude-sonnet-4.5",
+			expected:  true,
+		},
+		{
+			name:      "valid Llama model",
+			modelName: "llama-4-maverick",
 			expected:  true,
 		},
 		{
@@ -332,7 +344,7 @@ func TestIsModelSupported(t *testing.T) {
 		},
 		{
 			name:      "case sensitive check",
-			modelName: "GPT-4.1",
+			modelName: "GPT-5.2",
 			expected:  false,
 		},
 	}
@@ -678,62 +690,85 @@ func TestValidateStringParameter(t *testing.T) {
 
 // TestTestModelsExist verifies that test models required by integration tests are supported
 // This test drives the requirement to add test models to the ModelDefinitions map
-// TestOpenRouterConsolidation tests the migration of OpenAI and Gemini models to OpenRouter
-// This test will initially fail, driving the implementation of the migration
-func TestOpenRouterConsolidation(t *testing.T) {
+// TestOpenRouterModels tests that all production models are configured correctly via OpenRouter
+func TestOpenRouterModels(t *testing.T) {
 	t.Parallel()
-	migratedModels := []struct {
+	openRouterModels := []struct {
 		name               string
 		modelName          string
 		expectedProvider   string
 		expectedAPIModelID string
-		// Fields that must be preserved during migration
+		// Minimum requirements for each model
 		minContextWindow int
 		minOutputTokens  int
 	}{
 		{
-			name:               "gpt-4.1 migrated to OpenRouter",
-			modelName:          "gpt-4.1",
+			name:               "claude-opus-4.5",
+			modelName:          "claude-opus-4.5",
 			expectedProvider:   "openrouter",
-			expectedAPIModelID: "openai/gpt-4.1",
+			expectedAPIModelID: "anthropic/claude-opus-4.5",
+			minContextWindow:   200000,
+			minOutputTokens:    64000,
+		},
+		{
+			name:               "claude-sonnet-4.5",
+			modelName:          "claude-sonnet-4.5",
+			expectedProvider:   "openrouter",
+			expectedAPIModelID: "anthropic/claude-sonnet-4.5",
 			minContextWindow:   1000000,
-			minOutputTokens:    200000,
+			minOutputTokens:    64000,
 		},
 		{
-			name:               "o4-mini migrated to OpenRouter",
-			modelName:          "o4-mini",
+			name:               "gpt-5.2",
+			modelName:          "gpt-5.2",
 			expectedProvider:   "openrouter",
-			expectedAPIModelID: "openai/o4-mini",
-			minContextWindow:   200000,
-			minOutputTokens:    200000,
+			expectedAPIModelID: "openai/gpt-5.2",
+			minContextWindow:   400000,
+			minOutputTokens:    128000,
 		},
 		{
-			name:               "o3 migrated to OpenRouter",
-			modelName:          "o3",
+			name:               "deepseek-v3.2",
+			modelName:          "deepseek-v3.2",
 			expectedProvider:   "openrouter",
-			expectedAPIModelID: "openai/o3",
-			minContextWindow:   200000,
-			minOutputTokens:    200000,
+			expectedAPIModelID: "deepseek/deepseek-v3.2",
+			minContextWindow:   163840,
+			minOutputTokens:    65536,
 		},
 		{
-			name:               "gemini-2.5-pro migrated to OpenRouter",
-			modelName:          "gemini-2.5-pro",
+			name:               "gemini-3-flash (default)",
+			modelName:          "gemini-3-flash",
 			expectedProvider:   "openrouter",
-			expectedAPIModelID: "google/gemini-2.5-pro",
+			expectedAPIModelID: "google/gemini-3-flash-preview",
 			minContextWindow:   1000000,
 			minOutputTokens:    65000,
 		},
 		{
-			name:               "gemini-2.5-flash migrated to OpenRouter",
-			modelName:          "gemini-2.5-flash",
+			name:               "gemini-3-pro",
+			modelName:          "gemini-3-pro",
 			expectedProvider:   "openrouter",
-			expectedAPIModelID: "google/gemini-2.5-flash",
+			expectedAPIModelID: "google/gemini-3-pro-preview",
 			minContextWindow:   1000000,
+			minOutputTokens:    65000,
+		},
+		{
+			name:               "grok-4.1-fast",
+			modelName:          "grok-4.1-fast",
+			expectedProvider:   "openrouter",
+			expectedAPIModelID: "x-ai/grok-4.1-fast",
+			minContextWindow:   2000000,
+			minOutputTokens:    30000,
+		},
+		{
+			name:               "deepseek-v3.2",
+			modelName:          "deepseek-v3.2",
+			expectedProvider:   "openrouter",
+			expectedAPIModelID: "deepseek/deepseek-v3.2",
+			minContextWindow:   160000,
 			minOutputTokens:    65000,
 		},
 	}
 
-	for _, tt := range migratedModels {
+	for _, tt := range openRouterModels {
 		t.Run(tt.name, func(t *testing.T) {
 			info, err := GetModelInfo(tt.modelName)
 			if err != nil {
@@ -741,32 +776,34 @@ func TestOpenRouterConsolidation(t *testing.T) {
 				return
 			}
 
-			// Test the core migration requirements
+			// Test provider is OpenRouter
 			if info.Provider != tt.expectedProvider {
 				t.Errorf("GetModelInfo(%s).Provider = %s, want %s", tt.modelName, info.Provider, tt.expectedProvider)
 			}
 
+			// Test API model ID matches OpenRouter format
 			if info.APIModelID != tt.expectedAPIModelID {
 				t.Errorf("GetModelInfo(%s).APIModelID = %s, want %s", tt.modelName, info.APIModelID, tt.expectedAPIModelID)
 			}
 
-			// Ensure migration preserves critical functionality
+			// Ensure context window meets minimum requirements
 			if info.ContextWindow < tt.minContextWindow {
 				t.Errorf("GetModelInfo(%s).ContextWindow = %d, want >= %d", tt.modelName, info.ContextWindow, tt.minContextWindow)
 			}
 
+			// Ensure output tokens meet minimum requirements
 			if info.MaxOutputTokens < tt.minOutputTokens {
 				t.Errorf("GetModelInfo(%s).MaxOutputTokens = %d, want >= %d", tt.modelName, info.MaxOutputTokens, tt.minOutputTokens)
 			}
 
-			// Ensure default parameters are preserved
+			// Ensure default parameters are configured
 			if len(info.DefaultParams) == 0 {
-				t.Errorf("GetModelInfo(%s).DefaultParams should not be empty after migration", tt.modelName)
+				t.Errorf("GetModelInfo(%s).DefaultParams should not be empty", tt.modelName)
 			}
 
-			// Ensure parameter constraints are preserved
+			// Ensure parameter constraints are configured
 			if len(info.ParameterConstraints) == 0 {
-				t.Errorf("GetModelInfo(%s).ParameterConstraints should not be empty after migration", tt.modelName)
+				t.Errorf("GetModelInfo(%s).ParameterConstraints should not be empty", tt.modelName)
 			}
 		})
 	}

@@ -223,10 +223,10 @@ thinktank --dry-run --instructions task.txt ./your-project
 
 | Model | Context Window | Best For |
 |-------|---------------|----------|
-| `gpt-4.1` | 1M tokens | Large codebases |
-| `gemini-2.5-pro` | 1M tokens | Large codebases |
-| `gemini-2.5-flash` | 1M tokens | Large codebases |
-| `o4-mini` | 200K tokens | Medium projects |
+| `gpt-5.2` | 1M tokens | Large codebases |
+| `gemini-3-flash` | 1M tokens | Large codebases |
+| `gemini-3-flash` | 1M tokens | Large codebases |
+| `o3` | 200K tokens | Medium projects |
 | Most OpenRouter models | 64K-200K tokens | Focused analysis |
 
 #### Smart Filtering Strategies
@@ -283,7 +283,7 @@ thinktank --instructions task.txt ./your-project
 
 # If problems persist, retry individual models
 thinktank --instructions task.txt \
-  --model gpt-4.1 \
+  --model gpt-5.2 \
   ./your-project
 ```
 
@@ -365,14 +365,14 @@ thinktank --instructions task.txt \
 ```bash
 # Try multiple models to find one that works
 thinktank --instructions task.txt \
-  --model gpt-4.1 --model gemini-2.5-pro --model openrouter/meta-llama/llama-3.3-70b-instruct \
+  --model gpt-5.2 --model gemini-3-flash --model openrouter/meta-llama/llama-3.3-70b-instruct \
   --partial-success-ok \
   ./your-project
 
 # Use synthesis to combine results
 thinktank --instructions task.txt \
-  --model gpt-4.1 --model gemini-2.5-flash \
-  --synthesis-model gpt-4.1 \
+  --model gpt-5.2 --model gemini-3-flash \
+  --synthesis-model gpt-5.2 \
   ./your-project
 ```
 
@@ -430,7 +430,7 @@ grep -i "error\|fail\|timeout" debug.log
 ```bash
 # Test single model
 thinktank --instructions task.txt \
-  --model gpt-4.1 \
+  --model gpt-5.2 \
   ./your-project
 
 # Test single file
@@ -445,8 +445,8 @@ thinktank --instructions "Analyze this file" test.txt
 #### Isolate Variables
 ```bash
 # Test each provider separately
-thinktank --instructions task.txt --model gpt-4.1 ./project          # OpenAI
-thinktank --instructions task.txt --model gemini-2.5-pro ./project   # Gemini
+thinktank --instructions task.txt --model gpt-5.2 ./project          # OpenAI
+thinktank --instructions task.txt --model gemini-3-flash ./project   # Gemini
 thinktank --instructions task.txt --model openrouter/meta-llama/llama-3.3-70b-instruct ./project  # OpenRouter
 
 # Test different concurrency levels
@@ -509,8 +509,8 @@ sleep 30 && thinktank instructions.txt ./project --dry-run
 thinktank instructions.txt ./large-project --dry-run
 
 # Check output for:
-# "Compatible models: gpt-4.1 (180K tokens), gemini-2.5-pro (200K tokens)"
-# "Skipped models: o4-mini (exceeds 128K context limit)"
+# "Compatible models: gpt-5.2 (180K tokens), gemini-3-flash (200K tokens)"
+# "Skipped models: o3 (exceeds 128K context limit)"
 ```
 
 **Token Count Accuracy by Provider:**
@@ -589,7 +589,7 @@ thinktank instructions.txt ./huge-project --include .go,.md --exclude vendor,nod
 #### OpenAI Tokenization
 - **Issue**: tiktoken encoding errors
 - **Cause**: Unsupported model variant
-- **Solution**: Check model name spelling, use supported models (gpt-4.1, o4-mini)
+- **Solution**: Check model name spelling, use supported models (gpt-5.2, o3)
 
 #### Gemini Tokenization
 - **Issue**: SentencePiece initialization failures
@@ -611,7 +611,7 @@ When reporting issues, include:
 
 1. **Command used:**
    ```bash
-   thinktank --verbose --instructions task.txt --model gpt-4.1 ./project
+   thinktank --verbose --instructions task.txt --model gpt-5.2 ./project
    ```
 
 2. **Error output:**

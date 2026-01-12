@@ -140,7 +140,7 @@ func TestValidateAPIKeyHelper(t *testing.T) {
 	}{
 		{
 			name:      "valid gemini model with OPENROUTER_API_KEY",
-			modelName: "gemini-2.5-pro",
+			modelName: "gemini-3-flash",
 			setup: func() {
 				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
@@ -148,7 +148,7 @@ func TestValidateAPIKeyHelper(t *testing.T) {
 		},
 		{
 			name:      "valid openai model with OPENROUTER_API_KEY",
-			modelName: "gpt-4.1",
+			modelName: "gpt-5.2",
 			setup: func() {
 				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
@@ -156,7 +156,7 @@ func TestValidateAPIKeyHelper(t *testing.T) {
 		},
 		{
 			name:      "missing OPENROUTER_API_KEY",
-			modelName: "gemini-2.5-pro",
+			modelName: "gemini-3-flash",
 			setup: func() {
 				_ = os.Unsetenv("OPENROUTER_API_KEY")
 			},
@@ -211,7 +211,7 @@ func TestValidateAPIKeysForModels(t *testing.T) {
 	}{
 		{
 			name:       "single model with key",
-			modelNames: []string{"gemini-2.5-pro"},
+			modelNames: []string{"gemini-3-flash"},
 			setup: func() {
 				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
@@ -219,7 +219,7 @@ func TestValidateAPIKeysForModels(t *testing.T) {
 		},
 		{
 			name:       "multiple models, same provider",
-			modelNames: []string{"gemini-2.5-pro", "gemini-2.5-flash"},
+			modelNames: []string{"gemini-3-flash", "gemini-3-flash"},
 			setup: func() {
 				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
@@ -227,7 +227,7 @@ func TestValidateAPIKeysForModels(t *testing.T) {
 		},
 		{
 			name:       "multiple models, unified provider",
-			modelNames: []string{"gemini-2.5-pro", "gpt-4.1"},
+			modelNames: []string{"gemini-3-flash", "gpt-5.2"},
 			setup: func() {
 				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
@@ -235,7 +235,7 @@ func TestValidateAPIKeysForModels(t *testing.T) {
 		},
 		{
 			name:       "synthesis mode models (typical use case)",
-			modelNames: []string{"gemini-2.5-pro", "gpt-4.1"},
+			modelNames: []string{"gemini-3-flash", "gpt-5.2"},
 			setup: func() {
 				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
@@ -243,7 +243,7 @@ func TestValidateAPIKeysForModels(t *testing.T) {
 		},
 		{
 			name:       "missing OPENROUTER_API_KEY",
-			modelNames: []string{"gemini-2.5-pro", "gpt-4.1"},
+			modelNames: []string{"gemini-3-flash", "gpt-5.2"},
 			setup: func() {
 				_ = os.Unsetenv("OPENROUTER_API_KEY")
 			},
@@ -252,7 +252,7 @@ func TestValidateAPIKeysForModels(t *testing.T) {
 		},
 		{
 			name:       "unknown model in list",
-			modelNames: []string{"gemini-2.5-pro", "invalid-model"},
+			modelNames: []string{"gemini-3-flash", "invalid-model"},
 			setup: func() {
 				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
@@ -266,7 +266,7 @@ func TestValidateAPIKeysForModels(t *testing.T) {
 		},
 		{
 			name:       "duplicate models optimization test",
-			modelNames: []string{"gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-pro"},
+			modelNames: []string{"gemini-3-flash", "gemini-3-flash", "gemini-3-flash"},
 			setup: func() {
 				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
@@ -302,7 +302,7 @@ func TestValidateAPIKeysPerformance(t *testing.T) {
 	}()
 
 	// Test with synthesis mode models (common case)
-	models := []string{"gemini-2.5-pro", "gpt-4.1"}
+	models := []string{"gemini-3-flash", "gpt-5.2"}
 
 	// Warm up
 	_ = validateAPIKeysForModels(models)
@@ -336,7 +336,7 @@ func TestParseOptionalFlags(t *testing.T) {
 	}{
 		{
 			name:          "short model flag",
-			args:          []string{"-m", "gemini-2.5-pro", "instructions.md", "src/"},
+			args:          []string{"-m", "gemini-3-flash", "instructions.md", "src/"},
 			expectedFlags: 0,
 		},
 		{
@@ -475,7 +475,7 @@ func TestParseOptionalFlags_Comprehensive(t *testing.T) {
 // BenchmarkParseOptionalFlags measures parsing performance to ensure <100μs target
 func BenchmarkParseOptionalFlags(b *testing.B) {
 	// Typical CLI arguments with mixed flags
-	args := []string{"-v", "--model", "gemini-2.5-pro", "--output-dir", "./out",
+	args := []string{"-v", "--model", "gemini-3-flash", "--output-dir", "./out",
 		"--dry-run", "instructions.md", "src/"}
 
 	b.ResetTimer()

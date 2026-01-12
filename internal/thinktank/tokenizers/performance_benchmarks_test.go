@@ -145,7 +145,7 @@ func TestLargeInputHandling_RespectsTimeouts(t *testing.T) {
 			largeText := strings.Repeat("a", tt.textSize)
 
 			start := time.Now()
-			_, err = tokenizer.CountTokens(context.Background(), largeText, "gpt-4.1")
+			_, err = tokenizer.CountTokens(context.Background(), largeText, "gpt-5.2")
 			elapsed := time.Since(start)
 
 			if tt.shouldFail {
@@ -268,8 +268,8 @@ func (m *MockInputSizeAwareTokenCounter) GetEncoding(modelName string) (string, 
 
 // calculateMemoryTarget returns CI-aware memory targets for tokenizer initialization
 func calculateMemoryTarget() int64 {
-	// Base target for local development
-	baseTarget := int64(80 * 1024 * 1024) // 80MB
+	// Base target for local development - tiktoken o200k vocabulary is substantial
+	baseTarget := int64(120 * 1024 * 1024) // 120MB
 
 	// CI environments often have different memory characteristics
 	if os.Getenv("CI") != "" {

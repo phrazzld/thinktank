@@ -114,7 +114,7 @@ func processRequest(r *http.Request) (*DataResponse, error) {
 	openaiResult, err := service.CountTokensForModel(context.Background(), TokenCountingRequest{
 		Instructions: instructions,
 		Files:        files,
-	}, "gpt-4.1")
+	}, "gpt-5.2")
 
 	require.NoError(t, err)
 	assert.Greater(t, openaiResult.TotalTokens, 0)
@@ -123,7 +123,7 @@ func processRequest(r *http.Request) (*DataResponse, error) {
 	geminiResult, err := service.CountTokensForModel(context.Background(), TokenCountingRequest{
 		Instructions: instructions,
 		Files:        files,
-	}, "gemini-2.5-pro")
+	}, "gemini-3-flash")
 
 	require.NoError(t, err)
 	assert.Greater(t, geminiResult.TotalTokens, 0)

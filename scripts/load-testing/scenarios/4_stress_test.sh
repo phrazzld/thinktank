@@ -33,8 +33,8 @@ if run_thinktank \
     "Rate limit stress test (--rate-limit 10)" \
     "tmp/load-testing/stress/test1_rate_limit" \
     --instructions "$SIMPLE_INSTRUCTIONS" \
-    --model "gemini-2.5-flash" --model "gemini-2.5-flash" --model "gemini-2.5-flash" \
-    --model "o4-mini" --model "o4-mini" --model "o4-mini" \
+    --model "gemini-3-flash" --model "gemini-3-flash" --model "gemini-3-flash" \
+    --model "o3" --model "o3" --model "o3" \
     --max-concurrent 6 \
     --rate-limit 10 \
     "$WORKLOAD_DIR_SMALL"; then
@@ -58,9 +58,9 @@ if run_thinktank_partial \
     "Partial failure with --partial-success-ok flag" \
     "tmp/load-testing/stress/test2_partial_failure" \
     --instructions "$SIMPLE_INSTRUCTIONS" \
-    --model "gemini-2.5-pro" \
+    --model "gemini-3-flash" \
     --model "this-is-not-a-real-model-name" \
-    --model "gpt-4.1" \
+    --model "gpt-5.2" \
     --partial-success-ok \
     "$WORKLOAD_DIR_SMALL"; then
 
@@ -82,8 +82,8 @@ if run_thinktank \
     "High concurrency resource stress test" \
     "tmp/load-testing/stress/test3_resource_stress" \
     --instructions "$SIMPLE_INSTRUCTIONS" \
-    --model "gemini-2.5-flash" --model "gemini-2.5-flash" --model "gemini-2.5-flash" \
-    --model "o4-mini" --model "o4-mini" --model "o4-mini" \
+    --model "gemini-3-flash" --model "gemini-3-flash" --model "gemini-3-flash" \
+    --model "o3" --model "o3" --model "o3" \
     --model "openrouter/deepseek/deepseek-chat-v3-0324:free" \
     --model "openrouter/deepseek/deepseek-chat-v3-0324:free" \
     --max-concurrent 8 \

@@ -23,14 +23,10 @@ type OpenAITokenizer struct {
 func NewOpenAITokenizer() *OpenAITokenizer {
 	return &OpenAITokenizer{
 		modelEncodings: map[string]string{
-			// GPT-4 models use cl100k_base encoding
-			"gpt-4.1": "cl100k_base",
+			// GPT-5.2 uses cl100k_base encoding
+			"gpt-5.2": "cl100k_base",
 
-			// o4-mini and o3 use o200k_base encoding (GPT-4o family)
-			"o4-mini": "o200k_base",
-			"o3":      "o200k_base",
-
-			// Add more OpenAI models as needed
+			// Legacy OpenAI models for reference
 			"gpt-4":       "cl100k_base",
 			"gpt-4o":      "o200k_base",
 			"gpt-4o-mini": "o200k_base",

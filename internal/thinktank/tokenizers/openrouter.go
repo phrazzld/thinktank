@@ -30,8 +30,8 @@ func (t *OpenRouterTokenizer) CountTokens(ctx context.Context, text string, mode
 	}
 
 	// All OpenRouter models are normalized to o200k_base encoding.
-	// Use o4-mini which uses o200k_base encoding for consistent tokenization.
-	return t.openaiTokenizer.CountTokens(ctx, text, "o4-mini")
+	// Use gpt-4o which uses o200k_base encoding for consistent tokenization.
+	return t.openaiTokenizer.CountTokens(ctx, text, "gpt-4o")
 }
 
 // SupportsModel returns true if the model name appears to be an OpenRouter model.

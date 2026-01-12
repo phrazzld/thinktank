@@ -200,12 +200,12 @@ func TestTokenizerError_Details(t *testing.T) {
 func TestNewTokenizerErrorWithCategory(t *testing.T) {
 	t.Parallel()
 
-	err := NewTokenizerErrorWithCategory("gemini", "gemini-2.5-pro", "custom error",
+	err := NewTokenizerErrorWithCategory("gemini", "gemini-3-flash", "custom error",
 		errors.New("cause"), llm.CategoryInsufficientCredits)
 
 	assert.Equal(t, llm.CategoryInsufficientCredits, err.Category())
 	assert.Equal(t, "gemini", err.Provider)
-	assert.Equal(t, "gemini-2.5-pro", err.Model)
+	assert.Equal(t, "gemini-3-flash", err.Model)
 	assert.Equal(t, "custom error", err.Message)
 }
 

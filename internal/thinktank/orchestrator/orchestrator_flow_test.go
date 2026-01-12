@@ -271,30 +271,30 @@ func TestHandleOutputFlow_DualRoleModel(t *testing.T) {
 		{
 			name: "dual role model - both individual and synthesis succeed",
 			modelOutputs: map[string]string{
-				"gpt-4.1":        "Individual analysis from gpt-4.1",
+				"gpt-5.2":        "Individual analysis from gpt-5.2",
 				"claude-3":       "Analysis from claude-3",
-				"gemini-2.5-pro": "Analysis from gemini-2.5-pro",
+				"gemini-3-flash": "Analysis from gemini-3-flash",
 			},
-			synthesisModel: "gpt-4.1", // Same model serves dual role
+			synthesisModel: "gpt-5.2", // Same model serves dual role
 			expectedIndividual: map[string]string{
-				"gpt-4.1":        "/test/gpt-4.1.md",
+				"gpt-5.2":        "/test/gpt-5.2.md",
 				"claude-3":       "/test/claude-3.md",
-				"gemini-2.5-pro": "/test/gemini-2.5-pro.md",
+				"gemini-3-flash": "/test/gemini-3-flash.md",
 			},
-			expectedSynthesis: "/test/gpt-4.1-synthesis.md",
+			expectedSynthesis: "/test/gpt-5.2-synthesis.md",
 			expectError:       false,
 		},
 		{
 			name: "dual role model - individual succeeds, synthesis fails",
 			modelOutputs: map[string]string{
-				"gpt-4.1":  "Individual analysis from gpt-4.1",
+				"gpt-5.2":  "Individual analysis from gpt-5.2",
 				"claude-3": "Analysis from claude-3",
 			},
-			synthesisModel:      "gpt-4.1",
+			synthesisModel:      "gpt-5.2",
 			synthesisFlowError:  errors.New("synthesis rate limit exceeded"),
 			individualFlowError: nil,
 			expectedIndividual: map[string]string{
-				"gpt-4.1":  "/test/gpt-4.1.md",
+				"gpt-5.2":  "/test/gpt-5.2.md",
 				"claude-3": "/test/claude-3.md",
 			},
 			expectedSynthesis: "",
@@ -304,35 +304,35 @@ func TestHandleOutputFlow_DualRoleModel(t *testing.T) {
 		{
 			name: "dual role model - individual fails, synthesis succeeds",
 			modelOutputs: map[string]string{
-				"gpt-4.1":  "Individual analysis from gpt-4.1",
+				"gpt-5.2":  "Individual analysis from gpt-5.2",
 				"claude-3": "Analysis from claude-3",
 			},
-			synthesisModel:      "gpt-4.1",
+			synthesisModel:      "gpt-5.2",
 			individualFlowError: errors.New("individual save failed"),
 			synthesisFlowError:  nil,
-			expectedSynthesis:   "/test/gpt-4.1-synthesis.md",
+			expectedSynthesis:   "/test/gpt-5.2-synthesis.md",
 			expectError:         true,
 			expectedErrorType:   "individual",
 		},
 		{
 			name: "single model serves dual role",
 			modelOutputs: map[string]string{
-				"gpt-4.1": "Analysis from gpt-4.1",
+				"gpt-5.2": "Analysis from gpt-5.2",
 			},
-			synthesisModel: "gpt-4.1",
+			synthesisModel: "gpt-5.2",
 			expectedIndividual: map[string]string{
-				"gpt-4.1": "/test/gpt-4.1.md",
+				"gpt-5.2": "/test/gpt-5.2.md",
 			},
-			expectedSynthesis: "/test/gpt-4.1-synthesis.md",
+			expectedSynthesis: "/test/gpt-5.2-synthesis.md",
 			expectError:       false,
 		},
 		{
 			name: "dual role model - both individual and synthesis fail",
 			modelOutputs: map[string]string{
-				"gpt-4.1":  "Individual analysis from gpt-4.1",
+				"gpt-5.2":  "Individual analysis from gpt-5.2",
 				"claude-3": "Analysis from claude-3",
 			},
-			synthesisModel:      "gpt-4.1",
+			synthesisModel:      "gpt-5.2",
 			individualFlowError: errors.New("individual save failed"),
 			synthesisFlowError:  errors.New("synthesis failed"),
 			expectError:         true,
@@ -342,20 +342,20 @@ func TestHandleOutputFlow_DualRoleModel(t *testing.T) {
 			name: "synthesis model not in individual outputs",
 			modelOutputs: map[string]string{
 				"claude-3":       "Analysis from claude-3",
-				"gemini-2.5-pro": "Analysis from gemini-2.5-pro",
+				"gemini-3-flash": "Analysis from gemini-3-flash",
 			},
-			synthesisModel: "gpt-4.1", // Different from individual models
+			synthesisModel: "gpt-5.2", // Different from individual models
 			expectedIndividual: map[string]string{
 				"claude-3":       "/test/claude-3.md",
-				"gemini-2.5-pro": "/test/gemini-2.5-pro.md",
+				"gemini-3-flash": "/test/gemini-3-flash.md",
 			},
-			expectedSynthesis: "/test/gpt-4.1-synthesis.md",
+			expectedSynthesis: "/test/gpt-5.2-synthesis.md",
 			expectError:       false,
 		},
 		{
 			name:              "empty model outputs with synthesis model",
 			modelOutputs:      map[string]string{}, // Empty
-			synthesisModel:    "gpt-4.1",
+			synthesisModel:    "gpt-5.2",
 			expectedSynthesis: "", // No synthesis when no model outputs
 			expectError:       false,
 		},

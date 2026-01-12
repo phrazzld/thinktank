@@ -20,11 +20,11 @@ func TestComprehensiveE2EWorkflow(t *testing.T) {
 
 		// Test with multiple models from different providers
 		modelNames := []string{
-			"gpt-4.1",        // OpenAI model
-			"gemini-2.5-pro", // Google model
-			"o4-mini",        // OpenAI model
+			"gpt-5.2",          // OpenAI model
+			"gemini-3-flash",   // Google model
+			"kimi-k2-thinking", // OpenAI model
 		}
-		synthesisModel := "gpt-4.1" // Different model for synthesis
+		synthesisModel := "gpt-5.2" // Different model for synthesis
 
 		instructions := `# Comprehensive Test Instructions
 
@@ -43,7 +43,7 @@ Focus on providing practical, actionable insights for the development team.`
 
 		// === SETUP MODEL RESPONSES ===
 		modelResponses := map[string]string{
-			"gpt-4.1": `# Architecture Analysis (GPT-4.1)
+			"gpt-5.2": `# Architecture Analysis (GPT-4.1)
 
 ## System Design
 The codebase demonstrates a well-structured layered architecture with clear separation of concerns:
@@ -59,7 +59,7 @@ The codebase demonstrates a well-structured layered architecture with clear sepa
 - Provider-agnostic design enabling multi-LLM support
 - Clear dependency injection patterns`,
 
-			"gemini-2.5-pro": `# Code Quality Assessment (Gemini 2.5 Pro)
+			"gemini-3-flash": `# Code Quality Assessment (Gemini 2.5 Pro)
 
 ## Maintainability Score: A-
 
@@ -79,7 +79,7 @@ The codebase demonstrates a well-structured layered architecture with clear sepa
 - Code duplication: Minimal, good use of shared utilities
 - Naming conventions: Consistent and descriptive`,
 
-			"o4-mini": `# Security & Performance Analysis (O4-Mini)
+			"kimi-k2-thinking": `# Security & Performance Analysis (O4-Mini)
 
 ## Security Assessment
 
@@ -206,7 +206,7 @@ This analysis provides a clear foundation for continued development, balancing i
 func TestComprehensiveE2EWorkflowIndividualOutput(t *testing.T) {
 	IntegrationTestWithBoundaries(t, func(env *BoundaryTestEnv) {
 		// Test individual output workflow (no synthesis)
-		modelNames := []string{"gpt-4.1", "o4-mini", "gemini-2.5-pro"}
+		modelNames := []string{"gpt-5.2", "kimi-k2-thinking", "gemini-3-flash"}
 
 		instructions := "Generate individual technical analyses for each model."
 
@@ -214,9 +214,9 @@ func TestComprehensiveE2EWorkflowIndividualOutput(t *testing.T) {
 		setupSourceFiles(t, env)
 
 		modelResponses := map[string]string{
-			"gpt-4.1":        "# Individual Analysis - GPT-4.1\n\nDetailed technical analysis from GPT-4.1 perspective.",
-			"o4-mini":        "# Individual Analysis - O4-Mini\n\nDetailed technical analysis from O4-Mini perspective.",
-			"gemini-2.5-pro": "# Individual Analysis - Gemini\n\nDetailed technical analysis from Gemini perspective.",
+			"gpt-5.2":          "# Individual Analysis - GPT-4.1\n\nDetailed technical analysis from GPT-4.1 perspective.",
+			"kimi-k2-thinking": "# Individual Analysis - O4-Mini\n\nDetailed technical analysis from O4-Mini perspective.",
+			"gemini-3-flash":   "# Individual Analysis - Gemini\n\nDetailed technical analysis from Gemini perspective.",
 		}
 
 		for model, response := range modelResponses {
@@ -244,8 +244,8 @@ func TestComprehensiveE2EWorkflowIndividualOutput(t *testing.T) {
 		// Verify no synthesis file was created
 		synthesisFiles := []string{
 			filepath.Join(outputDir, "synthesis.md"),
-			filepath.Join(outputDir, "gpt-4.1-synthesis.md"),
-			filepath.Join(outputDir, "o4-mini-synthesis.md"),
+			filepath.Join(outputDir, "gpt-5.2-synthesis.md"),
+			filepath.Join(outputDir, "o3-synthesis.md"),
 		}
 
 		for _, synthesisFile := range synthesisFiles {
@@ -270,8 +270,8 @@ func TestComprehensiveE2EWorkflowPartialSuccess(t *testing.T) {
 		env.ExpectError("Simulated model failure for rate limit testing")    // Part of detailed error chain
 		env.ExpectError("Completed with model errors")                       // Final error summary
 
-		modelNames := []string{"gpt-4.1", "failing-model", "o4-mini"}
-		synthesisModel := "gemini-2.5-pro"
+		modelNames := []string{"gpt-5.2", "failing-model", "kimi-k2-thinking"}
+		synthesisModel := "gemini-3-pro"
 
 		instructions := "Test partial success handling with some model failures."
 
@@ -280,8 +280,8 @@ func TestComprehensiveE2EWorkflowPartialSuccess(t *testing.T) {
 
 		// Configure successful models
 		successfulResponses := map[string]string{
-			"gpt-4.1": "# Successful Analysis - GPT-4.1\n\nThis model succeeded.",
-			"o4-mini": "# Successful Analysis - O4-Mini\n\nThis model succeeded.",
+			"gpt-5.2":          "# Successful Analysis - GPT-4.1\n\nThis model succeeded.",
+			"kimi-k2-thinking": "# Successful Analysis - O4-Mini\n\nThis model succeeded.",
 		}
 
 		// Synthesis response

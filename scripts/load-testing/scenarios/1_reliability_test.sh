@@ -21,7 +21,7 @@ init_test_env
 RELIABILITY_RUNS=5
 SUCCESS_COUNT=0
 FAILED_RUNS=()
-TEST_MODEL="gemini-2.5-flash" # A fast and reliable model
+TEST_MODEL="gemini-3-flash" # A fast and reliable model
 WORKLOAD_DIR="$SCRIPT_DIR/../lib/workloads/small-project"
 INSTRUCTIONS_FILE="$SCRIPT_DIR/../lib/workloads/instructions/simple-prompt.md"
 

@@ -31,7 +31,7 @@ func CreateStandardArgsWithPaths(instructionsFile, outputDir, sourcePath string)
 		instructionsFile,
 		sourcePath,
 		"--output-dir", outputDir,
-		"--model", "gemini-2.5-pro",
+		"--model", "gemini-3-flash",
 	}
 }
 

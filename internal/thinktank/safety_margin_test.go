@@ -62,19 +62,19 @@ func TestTokenCountingService_ConfigurableSafetyMargin(t *testing.T) {
 			compatibleModels, err := service.GetCompatibleModels(ctx, req, []string{"openrouter"})
 			require.NoError(t, err)
 
-			// Find a model that reports its usable context (looking for gpt-4.1 which has ~100K context)
+			// Find a model that reports its usable context (looking for gpt-5.2 which has ~100K context)
 			var foundModel *ModelCompatibility
 			for _, model := range compatibleModels {
-				if model.ModelName == "gpt-4.1" {
+				if model.ModelName == "gpt-5.2" {
 					foundModel = &model
 					break
 				}
 			}
 
-			require.NotNil(t, foundModel, "Should find gpt-4.1 model in results")
+			require.NotNil(t, foundModel, "Should find gpt-5.2 model in results")
 
 			// Verify that the usable context reflects our safety margin configuration
-			// For gpt-4.1 with ~100K context window:
+			// For gpt-5.2 with ~100K context window:
 			// - 0% margin (default 10%) should give ~90K usable
 			// - 10% margin should give ~90K usable
 			// - 30% margin should give ~70K usable
@@ -114,16 +114,16 @@ func TestTokenCountingService_DefaultSafetyMargin(t *testing.T) {
 	compatibleModels, err := service.GetCompatibleModels(ctx, req, []string{"openrouter"})
 	require.NoError(t, err)
 
-	// Find gpt-4.1 model
+	// Find gpt-5.2 model
 	var foundModel *ModelCompatibility
 	for _, model := range compatibleModels {
-		if model.ModelName == "gpt-4.1" {
+		if model.ModelName == "gpt-5.2" {
 			foundModel = &model
 			break
 		}
 	}
 
-	require.NotNil(t, foundModel, "Should find gpt-4.1 model")
+	require.NotNil(t, foundModel, "Should find gpt-5.2 model")
 
 	// Verify that default 10% safety margin is applied
 	expectedUsable := foundModel.ContextWindow * 90 / 100 // 90% usable (10% safety margin)

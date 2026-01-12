@@ -69,8 +69,8 @@ func TestSetupConfiguration(t *testing.T) {
 				TargetPath:       "src/",
 				Flags:            FlagDryRun,
 			},
-			tokenServiceModels: []string{"gemini-2.5-flash"},
-			expectedModelNames: []string{"gemini-2.5-flash"},
+			tokenServiceModels: []string{"gemini-3-flash"},
+			expectedModelNames: []string{"gemini-3-flash"},
 			expectedVerbose:    false,
 			expectedLogLevel:   logutil.InfoLevel,
 			expectedDryRun:     true,
@@ -86,8 +86,8 @@ func TestSetupConfiguration(t *testing.T) {
 				TargetPath:       "src/",
 				Flags:            FlagVerbose,
 			},
-			tokenServiceModels: []string{"gemini-2.5-flash"},
-			expectedModelNames: []string{"gemini-2.5-flash"},
+			tokenServiceModels: []string{"gemini-3-flash"},
+			expectedModelNames: []string{"gemini-3-flash"},
 			expectedVerbose:    true,
 			expectedLogLevel:   logutil.DebugLevel,
 			expectedDryRun:     false,
@@ -103,8 +103,8 @@ func TestSetupConfiguration(t *testing.T) {
 				TargetPath:       "src/",
 				Flags:            FlagDebug,
 			},
-			tokenServiceModels: []string{"gemini-2.5-flash"},
-			expectedModelNames: []string{"gemini-2.5-flash"},
+			tokenServiceModels: []string{"gemini-3-flash"},
+			expectedModelNames: []string{"gemini-3-flash"},
 			expectedVerbose:    false,
 			expectedLogLevel:   logutil.DebugLevel,
 			expectedDryRun:     false,
@@ -120,8 +120,8 @@ func TestSetupConfiguration(t *testing.T) {
 				TargetPath:       "src/ tests/",
 				Flags:            FlagDryRun | FlagVerbose | FlagQuiet | FlagNoProgress | FlagJsonLogs | FlagDebug,
 			},
-			tokenServiceModels: []string{"gemini-2.5-flash"},
-			expectedModelNames: []string{"gemini-2.5-flash"},
+			tokenServiceModels: []string{"gemini-3-flash"},
+			expectedModelNames: []string{"gemini-3-flash"},
 			expectedVerbose:    true,
 			expectedLogLevel:   logutil.DebugLevel, // Both verbose and debug set debug level
 			expectedDryRun:     true,
@@ -137,8 +137,8 @@ func TestSetupConfiguration(t *testing.T) {
 				TargetPath:       "src/",
 				Flags:            0, // No flags
 			},
-			tokenServiceModels: []string{"gemini-2.5-flash", "gpt-4.1"},
-			expectedModelNames: []string{"gemini-2.5-flash", "gpt-4.1"},
+			tokenServiceModels: []string{"gemini-3-flash", "gpt-5.2"},
+			expectedModelNames: []string{"gemini-3-flash", "gpt-5.2"},
 			expectedVerbose:    false,
 			expectedLogLevel:   logutil.InfoLevel,
 			expectedDryRun:     false,
@@ -154,8 +154,8 @@ func TestSetupConfiguration(t *testing.T) {
 				TargetPath:       "src/",
 				Flags:            FlagSynthesis,
 			},
-			tokenServiceModels: []string{"gemini-2.5-flash"},
-			expectedModelNames: []string{"gemini-2.5-flash"},
+			tokenServiceModels: []string{"gemini-3-flash"},
+			expectedModelNames: []string{"gemini-3-flash"},
 			expectedVerbose:    false,
 			expectedLogLevel:   logutil.InfoLevel,
 			expectedDryRun:     false,
@@ -213,7 +213,7 @@ func TestSetupConfiguration(t *testing.T) {
 
 			// Verify synthesis model logic
 			if len(tt.expectedModelNames) > 1 || tt.simplifiedConfig.HasFlag(FlagSynthesis) {
-				assert.Equal(t, "gemini-2.5-pro", result.SynthesisModel)
+				assert.Equal(t, "gemini-3-pro", result.SynthesisModel)
 			} else {
 				assert.Equal(t, "", result.SynthesisModel)
 			}
@@ -236,7 +236,7 @@ func TestSetupConfigurationEdgeCases(t *testing.T) {
 				TargetPath:       "src/",
 				Flags:            0,
 			},
-			tokenService: &MockTokenCountingService{models: []string{"gemini-2.5-flash"}},
+			tokenService: &MockTokenCountingService{models: []string{"gemini-3-flash"}},
 			wantErr:      false, // setupConfiguration doesn't validate file existence
 		},
 		{
@@ -246,7 +246,7 @@ func TestSetupConfigurationEdgeCases(t *testing.T) {
 				TargetPath:       "",
 				Flags:            0,
 			},
-			tokenService: &MockTokenCountingService{models: []string{"gemini-2.5-flash"}},
+			tokenService: &MockTokenCountingService{models: []string{"gemini-3-flash"}},
 			wantErr:      false, // setupConfiguration doesn't validate path existence
 		},
 	}
@@ -316,7 +316,7 @@ func TestSetupConfigurationTargetPathParsing(t *testing.T) {
 			}
 
 			mockTokenService := &MockTokenCountingService{
-				models: []string{"gemini-2.5-flash"},
+				models: []string{"gemini-3-flash"},
 			}
 
 			result, err := setupConfiguration(simplifiedConfig, mockTokenService)
@@ -370,7 +370,7 @@ func TestSetupConfigurationLogLevelPrecedence(t *testing.T) {
 			}
 
 			mockTokenService := &MockTokenCountingService{
-				models: []string{"gemini-2.5-flash"},
+				models: []string{"gemini-3-flash"},
 			}
 
 			result, err := setupConfiguration(simplifiedConfig, mockTokenService)

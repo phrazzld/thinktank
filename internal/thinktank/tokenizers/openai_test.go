@@ -18,14 +18,12 @@ func TestOpenAITokenizer_SupportsModel(t *testing.T) {
 		model     string
 		supported bool
 	}{
-		{"gpt-4.1", true},
-		{"o4-mini", true},
-		{"o3", true},
+		{"gpt-5.2", true},
 		{"gpt-4", true},
 		{"gpt-4o", true},
 		{"gpt-4o-mini", true},
 		{"claude-3", false},
-		{"gemini-2.5-pro", false},
+		{"gemini-3-flash", false},
 		{"unknown-model", false},
 	}
 
@@ -47,9 +45,7 @@ func TestOpenAITokenizer_GetEncoding(t *testing.T) {
 		expectedEncoding string
 		expectError      bool
 	}{
-		{"gpt-4.1", "cl100k_base", false},
-		{"o4-mini", "o200k_base", false},
-		{"o3", "o200k_base", false},
+		{"gpt-5.2", "cl100k_base", false},
 		{"gpt-4", "cl100k_base", false},
 		{"gpt-4o", "o200k_base", false},
 		{"gpt-4o-mini", "o200k_base", false},
@@ -88,47 +84,47 @@ func TestOpenAITokenizer_CountTokens(t *testing.T) {
 		{
 			name:        "empty text",
 			text:        "",
-			model:       "gpt-4.1",
+			model:       "gpt-5.2",
 			minTokens:   0,
 			maxTokens:   0,
 			expectError: false,
 		},
 		{
-			name:        "simple text with gpt-4.1",
+			name:        "simple text with gpt-5.2",
 			text:        "Hello, world!",
-			model:       "gpt-4.1",
+			model:       "gpt-5.2",
 			minTokens:   2, // Usually tokenizes to 2-4 tokens
 			maxTokens:   4,
 			expectError: false,
 		},
 		{
-			name:        "simple text with o4-mini",
+			name:        "simple text with o3",
 			text:        "Hello, world!",
-			model:       "o4-mini",
+			model:       "gpt-5.2",
 			minTokens:   2, // Different encoding may have different counts
 			maxTokens:   4,
 			expectError: false,
 		},
 		{
-			name:        "longer text with gpt-4.1",
+			name:        "longer text with gpt-5.2",
 			text:        "This is a longer piece of text that should tokenize into multiple tokens.",
-			model:       "gpt-4.1",
+			model:       "gpt-5.2",
 			minTokens:   10, // Should be more than 10 tokens
 			maxTokens:   25, // But less than 25
 			expectError: false,
 		},
 		{
-			name:        "code snippet with gpt-4.1",
+			name:        "code snippet with gpt-5.2",
 			text:        "func main() {\n\tfmt.Println(\"Hello, World!\")\n}",
-			model:       "gpt-4.1",
+			model:       "gpt-5.2",
 			minTokens:   8, // Code typically has more tokens
 			maxTokens:   20,
 			expectError: false,
 		},
 		{
-			name:        "unicode text with gpt-4.1",
+			name:        "unicode text with gpt-5.2",
 			text:        "Hello 世界 🌍",
-			model:       "gpt-4.1",
+			model:       "gpt-5.2",
 			minTokens:   3, // Unicode handling
 			maxTokens:   8,
 			expectError: false,
@@ -172,17 +168,17 @@ func TestOpenAITokenizer_CountTokens_Accuracy(t *testing.T) {
 		{
 			name:  "english sentence",
 			text:  "The quick brown fox jumps over the lazy dog.",
-			model: "gpt-4.1",
+			model: "gpt-5.2",
 		},
 		{
 			name:  "technical text",
 			text:  "The TCP/IP protocol stack includes application, transport, network, and data link layers.",
-			model: "gpt-4.1",
+			model: "gpt-5.2",
 		},
 		{
 			name:  "code example",
 			text:  "function calculateSum(a, b) { return a + b; }",
-			model: "gpt-4.1",
+			model: "gpt-5.2",
 		},
 	}
 
@@ -215,11 +211,11 @@ func TestOpenAITokenizer_ClearCache(t *testing.T) {
 	ctx := context.Background()
 
 	// Trigger encoder initialization
-	_, err := tokenizer.CountTokens(ctx, "test", "gpt-4.1")
+	_, err := tokenizer.CountTokens(ctx, "test", "gpt-5.2")
 	require.NoError(t, err)
 
 	// Verify cache has content (indirect test)
-	encoding, err := tokenizer.GetEncoding("gpt-4.1")
+	encoding, err := tokenizer.GetEncoding("gpt-5.2")
 	require.NoError(t, err)
 
 	encoder, err := tokenizer.getEncoder(encoding)
@@ -230,7 +226,7 @@ func TestOpenAITokenizer_ClearCache(t *testing.T) {
 	tokenizer.ClearCache()
 
 	// Should still work after cache clear (will re-initialize)
-	count, err := tokenizer.CountTokens(ctx, "test", "gpt-4.1")
+	count, err := tokenizer.CountTokens(ctx, "test", "gpt-5.2")
 	require.NoError(t, err)
 	assert.Greater(t, count, 0)
 }
@@ -241,7 +237,7 @@ func BenchmarkOpenAITokenizer_CountTokens(b *testing.B) {
 		tokenizer := NewOpenAITokenizer()
 		ctx := context.Background()
 		text := "The quick brown fox jumps over the lazy dog."
-		model := "gpt-4.1"
+		model := "gpt-5.2"
 
 		// Warm up the tokenizer
 		_, err := tokenizer.CountTokens(ctx, text, model)
@@ -263,7 +259,7 @@ func BenchmarkOpenAITokenizer_InitializationCost(b *testing.B) {
 	perftest.RunBenchmark(b, "OpenAITokenizer_InitializationCost", func(b *testing.B) {
 		ctx := context.Background()
 		text := "test"
-		model := "gpt-4.1"
+		model := "gpt-5.2"
 
 		perftest.ReportAllocs(b)
 

@@ -38,8 +38,8 @@ func TestSynthesisModelParsing(t *testing.T) {
 	}{
 		{
 			name:            "With synthesis model",
-			args:            []string{"--instructions", tempFile.Name(), "--synthesis-model", "gpt-4.1"},
-			expectSynthesis: "gpt-4.1",
+			args:            []string{"--instructions", tempFile.Name(), "--synthesis-model", "gpt-5.2"},
+			expectSynthesis: "gpt-5.2",
 		},
 		{
 			name:            "With synthesis model using equals sign",
@@ -129,7 +129,7 @@ func TestSynthesisModelValidation(t *testing.T) {
 				Paths:            []string{"testfile"},
 				APIKey:           "test-key",
 				ModelNames:       []string{supportedModels[0]},
-				SynthesisModel:   "gemini-2.5-pro", // Actual supported model
+				SynthesisModel:   "gemini-3-flash", // Actual supported model
 			},
 			expectError: false,
 		},
@@ -140,7 +140,7 @@ func TestSynthesisModelValidation(t *testing.T) {
 				Paths:            []string{"testfile"},
 				APIKey:           "test-key",
 				ModelNames:       []string{supportedModels[0]},
-				SynthesisModel:   "gpt-4.1", // Actual supported model
+				SynthesisModel:   "gpt-5.2", // Actual supported model
 			},
 			expectError: false,
 		},
@@ -151,7 +151,7 @@ func TestSynthesisModelValidation(t *testing.T) {
 				Paths:            []string{"testfile"},
 				APIKey:           "test-key",
 				ModelNames:       []string{supportedModels[0]},
-				SynthesisModel:   "openrouter/deepseek/deepseek-r1-0528", // Actual supported model
+				SynthesisModel:   "deepseek-v3.2", // Actual supported model
 			},
 			expectError: false,
 		},
@@ -275,7 +275,7 @@ func TestInvalidSynthesisModelValidation(t *testing.T) {
 		Paths:            []string{"testfile"},
 		APIKey:           "test-key",
 		ModelNames:       []string{supportedModels[0]},
-		SynthesisModel:   "gpt-4.1", // Valid supported model
+		SynthesisModel:   "gpt-5.2", // Valid supported model
 	}
 
 	// Validate the inputs - this should pass the synthesis model check

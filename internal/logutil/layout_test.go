@@ -149,7 +149,7 @@ func TestFormatAlignedText(t *testing.T) {
 				StatusWidth:    20,
 				MinPadding:     2,
 			},
-			leftText:     "gemini-2.5-pro",
+			leftText:     "gemini-3-flash",
 			rightText:    "✓ 68.5s",
 			expectLength: 60, // 40 + 20
 		},
@@ -218,7 +218,7 @@ func TestFormatFileListItem(t *testing.T) {
 				FileSizeWidth: 8,
 				MinPadding:    2,
 			},
-			filename: "gemini-2.5-pro.md",
+			filename: "gemini-3-flash.md",
 			size:     "4.2K",
 		},
 		{

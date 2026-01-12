@@ -23,14 +23,14 @@ func TestEnhancedErrorHandling_ProviderContextInErrors(t *testing.T) {
 		{
 			name:           "OpenRouter provider error includes provider context",
 			provider:       "openrouter",
-			model:          "gpt-4.1",
-			expectedFields: []string{"provider=openrouter", "model=gpt-4.1"},
+			model:          "gpt-5.2",
+			expectedFields: []string{"provider=openrouter", "model=gpt-5.2"},
 		},
 		{
 			name:           "OpenRouter Gemini model error includes provider context",
 			provider:       "openrouter",
-			model:          "gemini-2.5-pro",
-			expectedFields: []string{"provider=openrouter", "model=gemini-2.5-pro"},
+			model:          "gemini-3-flash",
+			expectedFields: []string{"provider=openrouter", "model=gemini-3-flash"},
 		},
 		{
 			name:           "Unknown provider error includes context",
@@ -107,13 +107,13 @@ func TestEnhancedErrorHandling_TokenizerTypeInErrors(t *testing.T) {
 		{
 			name:              "OpenRouter errors include tiktoken-o200k type",
 			provider:          "openrouter",
-			model:             "gpt-4.1",
+			model:             "gpt-5.2",
 			expectedTokenizer: "tiktoken-o200k",
 		},
 		{
 			name:              "OpenRouter Gemini model errors include tiktoken-o200k type",
 			provider:          "openrouter",
-			model:             "gemini-2.5-pro",
+			model:             "gemini-3-flash",
 			expectedTokenizer: "tiktoken-o200k",
 		},
 		{
@@ -187,7 +187,7 @@ func TestEnhancedErrorHandling_ComprehensiveFallbackScenarios(t *testing.T) {
 				})
 				return manager
 			},
-			model:             "gpt-4.1",
+			model:             "gpt-5.2",
 			expectedFallback:  true,
 			expectedTokenizer: "estimation",
 			shouldSucceed:     true, // Should fall back to estimation and succeed
@@ -223,7 +223,7 @@ func TestEnhancedErrorHandling_ComprehensiveFallbackScenarios(t *testing.T) {
 				}
 				return manager
 			},
-			model:             "gpt-4.1",
+			model:             "gpt-5.2",
 			expectedFallback:  true,
 			expectedTokenizer: "estimation",
 			shouldSucceed:     false, // Circuit breaker should prevent execution

@@ -134,7 +134,7 @@ func (m *MockTokenService) GetCompatibleModels(ctx context.Context, req thinktan
 	// Return a few mock compatible models
 	return []thinktank.ModelCompatibility{
 		{
-			ModelName:     "gpt-4.1",
+			ModelName:     "gpt-5.2",
 			IsCompatible:  true,
 			TokenCount:    100,
 			ContextWindow: 1000,
@@ -144,7 +144,7 @@ func (m *MockTokenService) GetCompatibleModels(ctx context.Context, req thinktan
 			IsAccurate:    true,
 		},
 		{
-			ModelName:     "gemini-2.5-pro",
+			ModelName:     "gemini-3-flash",
 			IsCompatible:  true,
 			TokenCount:    100,
 			ContextWindow: 2000,

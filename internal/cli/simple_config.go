@@ -42,7 +42,7 @@ const (
 
 // Smart defaults - applied during parsing/conversion
 const (
-	DefaultModel        = "gemini-2.5-pro"
+	DefaultModel        = "gemini-3-flash"
 	DefaultOutputDir    = "."
 	DefaultSafetyMargin = 10 // 10% safety margin for token calculations
 )
@@ -109,7 +109,7 @@ func (s *SimplifiedConfig) Validate() error {
 	if !s.HasFlag(FlagDryRun) {
 		if s.HasFlag(FlagSynthesis) {
 			// For synthesis, pre-computed model list for efficiency
-			return validateAPIKeysForModels([]string{"gemini-2.5-pro", "gpt-4.1"})
+			return validateAPIKeysForModels([]string{"gemini-3-flash", "gpt-5.2"})
 		} else {
 			// Single model validation
 			return validateAPIKeyForModel(DefaultModel)

@@ -151,7 +151,7 @@ func TestSynthesisBasic(t *testing.T) {
 
 	// Define multiple model names
 	primaryModelNames := []string{"model1", "model2", "model3"}
-	synthesisModelName := "gemini-2.5-flash"
+	synthesisModelName := "gemini-3-pro"
 
 	// Set up basic flags
 	flags := env.DefaultFlags
@@ -295,7 +295,7 @@ func TestSynthesisWithFailures(t *testing.T) {
 	// Define multiple model names (some will succeed, some will fail)
 	allModelNames := []string{"model1", "model2", "model3", "model4"}
 	successfulModels := []string{"model2", "model4"} // These should succeed based on failingModels map
-	synthesisModelName := "gemini-2.5-flash"
+	synthesisModelName := "gemini-3-pro"
 
 	// Set up basic flags
 	flags := env.DefaultFlags

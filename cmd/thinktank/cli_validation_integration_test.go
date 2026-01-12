@@ -52,9 +52,9 @@ func TestValidateInputsIntegration(t *testing.T) {
 
 	// Use specific model names directly - all production models now use OpenRouter
 	// After OpenRouter consolidation, all models use "openrouter" provider
-	geminiModel := "gemini-2.5-pro"                                // Former Gemini model, now uses OpenRouter
-	openAIModel := "gpt-4.1"                                       // Former OpenAI model, now uses OpenRouter
-	openRouterModel := "openrouter/deepseek/deepseek-chat-v3-0324" // Explicit OpenRouter model
+	geminiModel := "gemini-3-flash"    // Former Gemini model, now uses OpenRouter
+	openAIModel := "gpt-5.2"           // Former OpenAI model, now uses OpenRouter
+	openRouterModel := "deepseek-v3.2" // Explicit OpenRouter model
 
 	// Verify these models actually exist
 	supportedModels := models.ListAllModels()
@@ -273,7 +273,7 @@ func TestValidateInputsEdgeCases(t *testing.T) {
 		config := &config.CliConfig{
 			InstructionsFile: instructionsFile,
 			Paths:            []string{"src/"},
-			ModelNames:       []string{"gemini-2.5-pro"},
+			ModelNames:       []string{"gemini-3-flash"},
 			SynthesisModel:   "totally-invalid-model-name",
 		}
 
@@ -297,8 +297,8 @@ func TestValidateInputsEdgeCases(t *testing.T) {
 		config := &config.CliConfig{
 			InstructionsFile: instructionsFile,
 			Paths:            []string{"src/"},
-			ModelNames:       []string{"gemini-2.5-pro"},
-			SynthesisModel:   "gpt-4.1", // Valid supported model
+			ModelNames:       []string{"gemini-3-flash"},
+			SynthesisModel:   "gpt-5.2", // Valid supported model
 		}
 
 		getenv := func(key string) string {

@@ -280,38 +280,43 @@ func TestGetProviderForModel(t *testing.T) {
 		errorMessage string
 	}{
 		{
-			name:      "openai model gpt-4.1 (migrated to openrouter)",
-			modelName: "gpt-4.1",
+			name:      "gpt-5.2 uses openrouter",
+			modelName: "gpt-5.2",
 			expected:  "openrouter",
 		},
 		{
-			name:      "openai model o3 (migrated to openrouter)",
-			modelName: "o3",
+			name:      "o3 uses openrouter",
+			modelName: "deepseek-v3.2",
 			expected:  "openrouter",
 		},
 		{
-			name:      "openai model o4-mini (migrated to openrouter)",
-			modelName: "o4-mini",
+			name:      "gemini-3-flash uses openrouter",
+			modelName: "gemini-3-flash",
 			expected:  "openrouter",
 		},
 		{
-			name:      "gemini model (migrated to openrouter)",
-			modelName: "gemini-2.5-pro",
+			name:      "gemini-3-pro uses openrouter",
+			modelName: "gemini-3-pro",
 			expected:  "openrouter",
 		},
 		{
-			name:      "gemini flash model (migrated to openrouter)",
-			modelName: "gemini-2.5-flash",
+			name:      "claude-sonnet-4.5 uses openrouter",
+			modelName: "claude-sonnet-4.5",
 			expected:  "openrouter",
 		},
 		{
-			name:      "openrouter model",
-			modelName: "openrouter/meta-llama/llama-4-maverick",
+			name:      "claude-opus-4.5 uses openrouter",
+			modelName: "claude-opus-4.5",
 			expected:  "openrouter",
 		},
 		{
-			name:      "another openrouter model",
-			modelName: "openrouter/deepseek/deepseek-chat-v3-0324",
+			name:      "deepseek-v3.2 uses openrouter",
+			modelName: "deepseek-v3.2",
+			expected:  "openrouter",
+		},
+		{
+			name:      "llama-4-maverick uses openrouter",
+			modelName: "llama-4-maverick",
 			expected:  "openrouter",
 		},
 		{

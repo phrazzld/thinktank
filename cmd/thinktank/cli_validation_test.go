@@ -73,7 +73,7 @@ func TestValidateInputs(t *testing.T) {
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
 				APIKey:           "",                         // Missing
-				ModelNames:       []string{"gemini-2.5-pro"}, // Gemini model requires Gemini API key
+				ModelNames:       []string{"gemini-3-flash"}, // Gemini model requires Gemini API key
 			},
 			expectError:   true,
 			errorContains: "OpenRouter API key not set",
@@ -105,7 +105,7 @@ func TestValidateInputs(t *testing.T) {
 				InstructionsFile: "", // Missing allowed in dry run
 				Paths:            []string{"testfile"},
 				APIKey:           "",                         // Missing
-				ModelNames:       []string{"gemini-2.5-pro"}, // Gemini model requires Gemini API key
+				ModelNames:       []string{"gemini-3-flash"}, // Gemini model requires Gemini API key
 				DryRun:           true,
 			},
 			expectError:   true,
@@ -139,7 +139,7 @@ func TestValidateInputs(t *testing.T) {
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
 				APIKey:           "test-key",          // Legacy API key field
-				ModelNames:       []string{"gpt-4.1"}, // OpenAI model (now uses OpenRouter)
+				ModelNames:       []string{"gpt-5.2"}, // OpenAI model (now uses OpenRouter)
 			},
 			expectError:   true,
 			errorContains: "OpenRouter API key not set",

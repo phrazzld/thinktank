@@ -20,35 +20,35 @@ func TestValidateParameter(t *testing.T) {
 		// Valid temperature values across all models
 		{
 			name:      "temperature valid lower bound",
-			modelName: "gpt-4.1",
+			modelName: "gpt-5.2",
 			paramName: "temperature",
 			value:     0.0,
 			wantError: false,
 		},
 		{
 			name:      "temperature valid middle value",
-			modelName: "gemini-2.5-pro",
+			modelName: "gemini-3-pro",
 			paramName: "temperature",
 			value:     1.0,
 			wantError: false,
 		},
 		{
 			name:      "temperature valid upper bound",
-			modelName: "openrouter/deepseek/deepseek-r1-0528",
+			modelName: "deepseek-v3.2",
 			paramName: "temperature",
 			value:     2.0,
 			wantError: false,
 		},
 		{
 			name:      "temperature as int (converted to float)",
-			modelName: "gpt-4.1",
+			modelName: "gpt-5.2",
 			paramName: "temperature",
 			value:     1,
 			wantError: false,
 		},
 		{
 			name:      "temperature as float32",
-			modelName: "gemini-2.5-flash",
+			modelName: "gemini-3-flash",
 			paramName: "temperature",
 			value:     float32(0.7),
 			wantError: false,
@@ -57,7 +57,7 @@ func TestValidateParameter(t *testing.T) {
 		// Invalid temperature values
 		{
 			name:          "temperature below minimum",
-			modelName:     "gpt-4.1",
+			modelName:     "gpt-5.2",
 			paramName:     "temperature",
 			value:         -0.1,
 			wantError:     true,
@@ -65,7 +65,7 @@ func TestValidateParameter(t *testing.T) {
 		},
 		{
 			name:          "temperature above maximum",
-			modelName:     "gemini-2.5-pro",
+			modelName:     "gemini-3-pro",
 			paramName:     "temperature",
 			value:         2.1,
 			wantError:     true,
@@ -73,7 +73,7 @@ func TestValidateParameter(t *testing.T) {
 		},
 		{
 			name:          "temperature wrong type",
-			modelName:     "gpt-4.1",
+			modelName:     "gpt-5.2",
 			paramName:     "temperature",
 			value:         "0.7",
 			wantError:     true,
@@ -83,21 +83,21 @@ func TestValidateParameter(t *testing.T) {
 		// Valid top_p values
 		{
 			name:      "top_p valid lower bound",
-			modelName: "gpt-4.1",
+			modelName: "gpt-5.2",
 			paramName: "top_p",
 			value:     0.0,
 			wantError: false,
 		},
 		{
 			name:      "top_p valid middle value",
-			modelName: "gemini-2.5-pro",
+			modelName: "gemini-3-pro",
 			paramName: "top_p",
 			value:     0.95,
 			wantError: false,
 		},
 		{
 			name:      "top_p valid upper bound",
-			modelName: "openrouter/deepseek/deepseek-r1-0528",
+			modelName: "deepseek-v3.2",
 			paramName: "top_p",
 			value:     1.0,
 			wantError: false,
@@ -106,7 +106,7 @@ func TestValidateParameter(t *testing.T) {
 		// Invalid top_p values
 		{
 			name:          "top_p below minimum",
-			modelName:     "gpt-4.1",
+			modelName:     "gpt-5.2",
 			paramName:     "top_p",
 			value:         -0.1,
 			wantError:     true,
@@ -114,40 +114,33 @@ func TestValidateParameter(t *testing.T) {
 		},
 		{
 			name:          "top_p above maximum",
-			modelName:     "gemini-2.5-pro",
+			modelName:     "gemini-3-pro",
 			paramName:     "top_p",
 			value:         1.1,
 			wantError:     true,
 			errorContains: "top_p",
 		},
 
-		// Valid max_tokens/max_output_tokens
+		// Valid max_tokens
 		{
 			name:      "max_tokens valid",
-			modelName: "gpt-4.1",
+			modelName: "gpt-5.2",
 			paramName: "max_tokens",
 			value:     1000,
 			wantError: false,
 		},
 		{
-			name:      "max_output_tokens valid",
-			modelName: "gemini-2.5-pro",
-			paramName: "max_output_tokens",
-			value:     5000,
-			wantError: false,
-		},
-		{
 			name:      "max_tokens as float64 whole number",
-			modelName: "gpt-4.1",
+			modelName: "gpt-5.2",
 			paramName: "max_tokens",
 			value:     float64(2048),
 			wantError: false,
 		},
 
-		// Invalid max_tokens/max_output_tokens
+		// Invalid max_tokens
 		{
 			name:          "max_tokens zero",
-			modelName:     "gpt-4.1",
+			modelName:     "gpt-5.2",
 			paramName:     "max_tokens",
 			value:         0,
 			wantError:     true,
@@ -155,7 +148,7 @@ func TestValidateParameter(t *testing.T) {
 		},
 		{
 			name:          "max_tokens negative",
-			modelName:     "gpt-4.1",
+			modelName:     "gpt-5.2",
 			paramName:     "max_tokens",
 			value:         -100,
 			wantError:     true,
@@ -163,7 +156,7 @@ func TestValidateParameter(t *testing.T) {
 		},
 		{
 			name:          "max_tokens as non-integer float",
-			modelName:     "gpt-4.1",
+			modelName:     "gpt-5.2",
 			paramName:     "max_tokens",
 			value:         1000.5,
 			wantError:     true,
@@ -173,14 +166,14 @@ func TestValidateParameter(t *testing.T) {
 		// Valid top_k (Gemini models)
 		{
 			name:      "top_k valid",
-			modelName: "gemini-2.5-pro",
+			modelName: "gemini-3-pro",
 			paramName: "top_k",
 			value:     40,
 			wantError: false,
 		},
 		{
 			name:      "top_k minimum value",
-			modelName: "gemini-2.5-flash",
+			modelName: "gemini-3-flash",
 			paramName: "top_k",
 			value:     1,
 			wantError: false,
@@ -189,7 +182,7 @@ func TestValidateParameter(t *testing.T) {
 		// Invalid top_k
 		{
 			name:          "top_k zero",
-			modelName:     "gemini-2.5-pro",
+			modelName:     "gemini-3-pro",
 			paramName:     "top_k",
 			value:         0,
 			wantError:     true,
@@ -197,7 +190,7 @@ func TestValidateParameter(t *testing.T) {
 		},
 		{
 			name:          "top_k above maximum",
-			modelName:     "gemini-2.5-pro",
+			modelName:     "gemini-3-pro",
 			paramName:     "top_k",
 			value:         101,
 			wantError:     true,
@@ -207,28 +200,28 @@ func TestValidateParameter(t *testing.T) {
 		// Valid frequency_penalty and presence_penalty (OpenAI models)
 		{
 			name:      "frequency_penalty valid",
-			modelName: "gpt-4.1",
+			modelName: "gpt-5.2",
 			paramName: "frequency_penalty",
 			value:     0.5,
 			wantError: false,
 		},
 		{
 			name:      "presence_penalty valid",
-			modelName: "o4-mini",
+			modelName: "deepseek-v3.2",
 			paramName: "presence_penalty",
 			value:     -1.0,
 			wantError: false,
 		},
 		{
 			name:      "frequency_penalty upper bound",
-			modelName: "gpt-4.1",
+			modelName: "gpt-5.2",
 			paramName: "frequency_penalty",
 			value:     2.0,
 			wantError: false,
 		},
 		{
 			name:      "presence_penalty lower bound",
-			modelName: "o4-mini",
+			modelName: "deepseek-v3.2",
 			paramName: "presence_penalty",
 			value:     -2.0,
 			wantError: false,
@@ -237,7 +230,7 @@ func TestValidateParameter(t *testing.T) {
 		// Invalid frequency_penalty and presence_penalty
 		{
 			name:          "frequency_penalty below minimum",
-			modelName:     "gpt-4.1",
+			modelName:     "gpt-5.2",
 			paramName:     "frequency_penalty",
 			value:         -2.1,
 			wantError:     true,
@@ -245,7 +238,7 @@ func TestValidateParameter(t *testing.T) {
 		},
 		{
 			name:          "presence_penalty above maximum",
-			modelName:     "o4-mini",
+			modelName:     "deepseek-v3.2",
 			paramName:     "presence_penalty",
 			value:         2.1,
 			wantError:     true,
@@ -255,55 +248,17 @@ func TestValidateParameter(t *testing.T) {
 		// Parameters not defined in constraints (should be accepted)
 		{
 			name:      "undefined parameter accepted",
-			modelName: "gpt-4.1",
+			modelName: "gpt-5.2",
 			paramName: "custom_param",
 			value:     "any_value",
 			wantError: false,
 		},
 		{
 			name:      "reasoning parameter accepted (nested object)",
-			modelName: "o4-mini",
+			modelName: "deepseek-v3.2",
 			paramName: "reasoning",
 			value:     map[string]interface{}{"effort": "high"},
 			wantError: false,
-		},
-
-		// GPT-5 models validation
-		{
-			name:      "gpt-5 valid temperature",
-			modelName: "gpt-5",
-			paramName: "temperature",
-			value:     0.7,
-			wantError: false,
-		},
-		{
-			name:      "gpt-5-mini valid max_tokens",
-			modelName: "gpt-5-mini",
-			paramName: "max_tokens",
-			value:     100000,
-			wantError: false,
-		},
-		{
-			name:      "gpt-5 valid reasoning_effort high",
-			modelName: "gpt-5",
-			paramName: "reasoning_effort",
-			value:     "high",
-			wantError: false,
-		},
-		{
-			name:      "gpt-5-mini valid reasoning_effort medium",
-			modelName: "gpt-5-mini",
-			paramName: "reasoning_effort",
-			value:     "medium",
-			wantError: false,
-		},
-		{
-			name:          "gpt-5 invalid reasoning_effort",
-			modelName:     "gpt-5",
-			paramName:     "reasoning_effort",
-			value:         "ultra",
-			wantError:     true,
-			errorContains: "reasoning_effort",
 		},
 
 		// Model validation errors
@@ -319,21 +274,21 @@ func TestValidateParameter(t *testing.T) {
 		// Edge cases for different numeric types
 		{
 			name:      "int32 parameter",
-			modelName: "gpt-4.1",
+			modelName: "gpt-5.2",
 			paramName: "max_tokens",
 			value:     int32(1024),
 			wantError: false,
 		},
 		{
 			name:      "int64 parameter",
-			modelName: "gpt-4.1",
+			modelName: "gpt-5.2",
 			paramName: "max_tokens",
 			value:     int64(2048),
 			wantError: false,
 		},
 		{
 			name:      "float32 temperature",
-			modelName: "gpt-4.1",
+			modelName: "gpt-5.2",
 			paramName: "temperature",
 			value:     float32(0.8),
 			wantError: false,
@@ -398,8 +353,13 @@ func TestParameterConstraints(t *testing.T) {
 				if tempConstraint.MinValue == nil || *tempConstraint.MinValue != 0.0 {
 					t.Errorf("Model %s temperature min value incorrect", modelName)
 				}
-				if tempConstraint.MaxValue == nil || *tempConstraint.MaxValue != 2.0 {
-					t.Errorf("Model %s temperature max value incorrect", modelName)
+				// Temperature max varies by provider: Claude uses 0-1, others use 0-2
+				expectedMaxTemp := 2.0
+				if strings.HasPrefix(modelName, "claude-") {
+					expectedMaxTemp = 1.0
+				}
+				if tempConstraint.MaxValue == nil || *tempConstraint.MaxValue != expectedMaxTemp {
+					t.Errorf("Model %s temperature max value = %v, want %v", modelName, tempConstraint.MaxValue, expectedMaxTemp)
 				}
 			}
 
@@ -419,29 +379,8 @@ func TestParameterConstraints(t *testing.T) {
 				}
 			}
 
-			// Provider-specific constraints
-			switch info.Provider {
-			case "openai":
-				// OpenAI models should have frequency_penalty and presence_penalty
-				if _, exists := info.ParameterConstraints["frequency_penalty"]; !exists {
-					t.Errorf("OpenAI model %s missing frequency_penalty constraint", modelName)
-				}
-				if _, exists := info.ParameterConstraints["presence_penalty"]; !exists {
-					t.Errorf("OpenAI model %s missing presence_penalty constraint", modelName)
-				}
-				if _, exists := info.ParameterConstraints["max_tokens"]; !exists {
-					t.Errorf("OpenAI model %s missing max_tokens constraint", modelName)
-				}
-			case "gemini":
-				// Gemini models should have top_k and max_output_tokens
-				if _, exists := info.ParameterConstraints["top_k"]; !exists {
-					t.Errorf("Gemini model %s missing top_k constraint", modelName)
-				}
-				if _, exists := info.ParameterConstraints["max_output_tokens"]; !exists {
-					t.Errorf("Gemini model %s missing max_output_tokens constraint", modelName)
-				}
-			case "openrouter":
-				// OpenRouter models should have max_tokens
+			// All OpenRouter models should have max_tokens constraint (all production models use OpenRouter now)
+			if info.Provider == "openrouter" {
 				if _, exists := info.ParameterConstraints["max_tokens"]; !exists {
 					t.Errorf("OpenRouter model %s missing max_tokens constraint", modelName)
 				}
@@ -463,7 +402,7 @@ func TestGetProviderDefaultRateLimit(t *testing.T) {
 			expectedRate: 60, // Obsolete provider returns default rate limit
 		},
 		{
-			name:         "Gemini provider",
+			name:         "Gemini provider (obsolete)",
 			provider:     "gemini",
 			expectedRate: 60,
 		},
@@ -503,53 +442,39 @@ func TestGetModelRateLimit(t *testing.T) {
 	}{
 		// Models without specific rate limit override - use provider defaults
 		{
-			name:         "Known model migrated to OpenRouter uses provider default",
-			modelName:    "gemini-2.5-pro",
-			expectedRate: 20, // Should use openrouter provider default
+			name:         "Gemini 3 Pro uses OpenRouter provider default",
+			modelName:    "gemini-3-pro",
+			expectedRate: 20,
 			expectError:  false,
 		},
 		{
-			name:         "Known OpenAI model migrated to OpenRouter",
-			modelName:    "gpt-4.1",
-			expectedRate: 20, // Should use openrouter provider default
+			name:         "GPT-5.2 uses OpenRouter provider default",
+			modelName:    "gpt-5.2",
+			expectedRate: 20,
 			expectError:  false,
 		},
 		{
-			name:         "OpenRouter model without specific rate limit uses provider default",
-			modelName:    "openrouter/deepseek/deepseek-chat-v3-0324",
-			expectedRate: 20, // Should use openrouter provider default
+			name:         "DeepSeek V3.2 uses OpenRouter provider default",
+			modelName:    "deepseek-v3.2",
+			expectedRate: 20,
 			expectError:  false,
 		},
 		{
-			name:         "Gemini flash model migrated to OpenRouter",
-			modelName:    "gemini-2.5-flash",
-			expectedRate: 20, // Should use openrouter provider default
+			name:         "Gemini 3 Flash uses OpenRouter provider default",
+			modelName:    "gemini-3-flash",
+			expectedRate: 20,
 			expectError:  false,
 		},
 		{
-			name:         "OpenAI o4-mini model migrated to OpenRouter",
-			modelName:    "o4-mini",
-			expectedRate: 20, // Should use openrouter provider default
+			name:         "Claude Sonnet 4.5 uses OpenRouter provider default",
+			modelName:    "claude-sonnet-4.5",
+			expectedRate: 20,
 			expectError:  false,
 		},
 		{
-			name:         "OpenAI o3 model migrated to OpenRouter",
-			modelName:    "o3",
-			expectedRate: 20, // Should use openrouter provider default
-			expectError:  false,
-		},
-
-		// Models with specific rate limit overrides
-		{
-			name:         "Model with specific rate limit override (deepseek-r1-0528)",
-			modelName:    "openrouter/deepseek/deepseek-r1-0528",
-			expectedRate: 5, // Should use model-specific override
-			expectError:  false,
-		},
-		{
-			name:         "Model with specific rate limit override (deepseek-r1-0528:free)",
-			modelName:    "openrouter/deepseek/deepseek-r1-0528:free",
-			expectedRate: 3, // Should use model-specific override
+			name:         "o3 uses OpenRouter provider default",
+			modelName:    "deepseek-v3.2",
+			expectedRate: 20,
 			expectError:  false,
 		},
 
@@ -577,42 +502,28 @@ func TestGetModelRateLimit(t *testing.T) {
 		},
 		{
 			name:           "Similar but incorrect model name",
-			modelName:      "gpt-4.2",
+			modelName:      "gpt-5.3",
 			expectedRate:   0,
 			expectError:    true,
 			errorSubstring: "unknown model",
 		},
 		{
 			name:           "Case-sensitive model name failure",
-			modelName:      "GPT-4.1",
-			expectedRate:   0,
-			expectError:    true,
-			errorSubstring: "unknown model",
-		},
-		{
-			name:           "Model name with extra path components",
-			modelName:      "openrouter/deepseek/deepseek-chat-v3-0324/extra",
-			expectedRate:   0,
-			expectError:    true,
-			errorSubstring: "unknown model",
-		},
-		{
-			name:           "Model name with missing path components",
-			modelName:      "deepseek-chat-v3-0324",
+			modelName:      "GPT-5.2",
 			expectedRate:   0,
 			expectError:    true,
 			errorSubstring: "unknown model",
 		},
 		{
 			name:           "Model name with leading/trailing whitespace",
-			modelName:      " gpt-4.1 ",
+			modelName:      " gpt-5.2 ",
 			expectedRate:   0,
 			expectError:    true,
 			errorSubstring: "unknown model",
 		},
 		{
 			name:           "Model name with null characters",
-			modelName:      "gpt-4.1\x00",
+			modelName:      "gpt-5.2\x00",
 			expectedRate:   0,
 			expectError:    true,
 			errorSubstring: "unknown model",

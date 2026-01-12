@@ -41,8 +41,8 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 	instructions := "Test instructions for synthesis"
 
 	// Set up multiple model names and synthesis model
-	modelNames := []string{"o4-mini", "gpt-4.1", "gemini-2.5-pro"}
-	synthesisModel := "gpt-4.1"
+	modelNames := []string{"kimi-k2-thinking", "gpt-5.2", "gemini-3-flash"}
+	synthesisModel := "gpt-5.2"
 
 	// Parse log level
 	logLevel, _ := logutil.ParseLogLevel("debug")
@@ -68,9 +68,9 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 
 	// Expected model outputs
 	mockOutputs := map[string]string{
-		"o4-mini":        "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
-		"gpt-4.1":        "# Output from Model 2\n\nThis is test output from gpt-4o.",
-		"gemini-2.5-pro": "# Output from Model 3\n\nThis is test output from gemini-2.5-pro.",
+		"kimi-k2-thinking": "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
+		"gpt-5.2":          "# Output from Model 2\n\nThis is test output from gpt-4o.",
+		"gemini-3-flash":   "# Output from Model 3\n\nThis is test output from gemini-3-flash.",
 	}
 
 	// Expected synthesis output
@@ -222,8 +222,8 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	instructions := "Test instructions for synthesis with failures"
 
 	// Set up multiple model names and synthesis model
-	modelNames := []string{"o4-mini", "gpt-4.1", "gemini-2.5-pro"}
-	synthesisModel := "gpt-4.1"
+	modelNames := []string{"kimi-k2-thinking", "gpt-5.2", "gemini-3-flash"}
+	synthesisModel := "gpt-5.2"
 
 	// Parse log level
 	logLevel, _ := logutil.ParseLogLevel("debug")
@@ -244,11 +244,11 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	// Create logger
 	logger := logutil.NewTestLogger(t)
 
-	// Declare expected error patterns for gpt-4.1 failure (this is part of the test scenario)
-	logger.ExpectError("Generation failed for model gpt-4.1")
-	logger.ExpectError("Error generating content with model gpt-4.1")
-	logger.ExpectError("Processing model gpt-4.1 failed")
-	logger.ExpectError("model gpt-4.1 processing failed")
+	// Declare expected error patterns for gpt-5.2 failure (this is part of the test scenario)
+	logger.ExpectError("Generation failed for model gpt-5.2")
+	logger.ExpectError("Error generating content with model gpt-5.2")
+	logger.ExpectError("Processing model gpt-5.2 failed")
+	logger.ExpectError("model gpt-5.2 processing failed")
 	logger.ExpectError("Completed with model errors")
 	logger.ExpectError("API rate limit exceeded")
 
@@ -257,8 +257,8 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 
 	// Expected model outputs
 	mockOutputs := map[string]string{
-		"o4-mini":        "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
-		"gemini-2.5-pro": "# Output from Model 3\n\nThis is test output from gemini-2.5-pro.",
+		"kimi-k2-thinking": "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
+		"gemini-3-flash":   "# Output from Model 3\n\nThis is test output from gemini-3-flash.",
 	}
 
 	// Expected synthesis output
@@ -277,8 +277,8 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 			}, nil
 		}
 
-		// Simulate gpt-4.1 failing for individual model calls only
-		if modelName == "gpt-4.1" {
+		// Simulate gpt-5.2 failing for individual model calls only
+		if modelName == "gpt-5.2" {
 			return nil, &llm.MockError{
 				Message:       "API rate limit exceeded",
 				ErrorCategory: llm.CategoryRateLimit,
@@ -367,8 +367,8 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 		t.Logf("Synthesis file was correctly created despite the failure")
 	}
 
-	// Verify that o4-mini and gemini-2.5-pro output files were created
-	successfulModels := []string{"o4-mini", "gemini-2.5-pro"}
+	// Verify that o3 and gemini-3-flash output files were created
+	successfulModels := []string{"kimi-k2-thinking", "gemini-3-flash"}
 	for _, modelName := range successfulModels {
 		expectedFilePath := filepath.Join(outputDir, modelName+".md")
 		_, modelStatErr := os.Stat(expectedFilePath)
@@ -379,13 +379,13 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 		}
 	}
 
-	// Verify gpt-4.1 file was NOT created
-	failedModelPath := filepath.Join(outputDir, "gpt-4.1.md")
+	// Verify gpt-5.2 file was NOT created
+	failedModelPath := filepath.Join(outputDir, "gpt-5.2.md")
 	_, modelStatErr := os.Stat(failedModelPath)
 	if !os.IsNotExist(modelStatErr) {
-		t.Errorf("File for failed gpt-4.1 should not exist, but it does")
+		t.Errorf("File for failed gpt-5.2 should not exist, but it does")
 	} else {
-		t.Logf("Correctly verified that failed gpt-4.1 has no output file")
+		t.Logf("Correctly verified that failed gpt-5.2 has no output file")
 	}
 }
 

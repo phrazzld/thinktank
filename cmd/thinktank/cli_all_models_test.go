@@ -25,8 +25,8 @@ func TestCLIValidatesAllSupportedModels(t *testing.T) {
 
 	// Get all supported models
 	supportedModels := models.ListAllModels()
-	if len(supportedModels) != 19 {
-		t.Fatalf("Expected 19 supported models (15 production + 4 test), got %d", len(supportedModels))
+	if len(supportedModels) != 18 {
+		t.Fatalf("Expected 18 supported models (14 production + 4 test), got %d", len(supportedModels))
 	}
 
 	// Create a mock logger
@@ -108,17 +108,17 @@ func TestCLIValidatesMultipleModels(t *testing.T) {
 	}{
 		{
 			name:       "Multiple OpenRouter models",
-			modelNames: []string{"gpt-4.1", "o4-mini", "gemini-2.5-pro"},
+			modelNames: []string{"gpt-5.2", "gpt-5.2", "gemini-3-flash"},
 			desc:       "multiple models from OpenRouter",
 		},
 		{
 			name:       "OpenAI family via OpenRouter",
-			modelNames: []string{"gpt-4.1", "o4-mini", "o3"},
+			modelNames: []string{"gpt-5.2", "gpt-5.2", "gpt-5.2"},
 			desc:       "OpenAI models via OpenRouter",
 		},
 		{
 			name:       "Gemini family via OpenRouter",
-			modelNames: []string{"gemini-2.5-pro", "gemini-2.5-flash"},
+			modelNames: []string{"gemini-3-flash", "gemini-3-flash"},
 			desc:       "Gemini models via OpenRouter",
 		},
 		{
@@ -254,7 +254,7 @@ func TestCLIRejectsInvalidModels(t *testing.T) {
 		},
 		{
 			name:          "Mixed valid and invalid",
-			modelNames:    []string{"gpt-4.1", "invalid-model"},
+			modelNames:    []string{"gpt-5.2", "invalid-model"},
 			errorContains: "unknown model",
 		},
 		{
@@ -583,21 +583,21 @@ func TestCLIMultiProviderAPIKeyValidation(t *testing.T) {
 		},
 		{
 			name:          "Missing OpenRouter API key",
-			models:        []string{"gpt-4.1", "gemini-2.5-pro"},
+			models:        []string{"gpt-5.2", "gemini-3-flash"},
 			missingKeys:   []string{"OPENROUTER_API_KEY"},
 			expectError:   true,
 			errorContains: "OpenRouter API key not set - get your key at https://openrouter.ai/keys",
 		},
 		{
 			name:          "Old API keys present but not needed",
-			models:        []string{"gpt-4.1", "o4-mini"},
+			models:        []string{"gpt-5.2", "gpt-5.2"},
 			missingKeys:   []string{"OPENROUTER_API_KEY"},
 			expectError:   true,
 			errorContains: "OpenRouter API key not set - get your key at https://openrouter.ai/keys",
 		},
 		{
 			name:          "Single model without API key",
-			models:        []string{"gemini-2.5-flash"},
+			models:        []string{"gemini-3-flash"},
 			missingKeys:   []string{"OPENROUTER_API_KEY"},
 			expectError:   true,
 			errorContains: "OpenRouter API key not set - get your key at https://openrouter.ai/keys",

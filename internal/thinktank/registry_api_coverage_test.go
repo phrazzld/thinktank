@@ -19,7 +19,7 @@ func TestRegistryAPICoverageBoost(t *testing.T) {
 
 	t.Run("GetModelDefinition", func(t *testing.T) {
 		// Test valid model
-		info, err := service.GetModelDefinition(ctx, "gpt-4.1")
+		info, err := service.GetModelDefinition(ctx, "gpt-5.2")
 		if err != nil {
 			t.Errorf("Expected no error for valid model, got: %v", err)
 		}
@@ -110,7 +110,7 @@ func TestRegistryAPICoverageBoost(t *testing.T) {
 
 	t.Run("GetModelParameters", func(t *testing.T) {
 		// Test valid model
-		params, err := service.GetModelParameters(ctx, "gpt-4.1")
+		params, err := service.GetModelParameters(ctx, "gpt-5.2")
 		if err != nil {
 			t.Errorf("Expected no error for valid model, got: %v", err)
 		}
@@ -127,7 +127,7 @@ func TestRegistryAPICoverageBoost(t *testing.T) {
 
 	t.Run("GetModelTokenLimits", func(t *testing.T) {
 		// Test valid model
-		contextWindow, maxOutput, err := service.GetModelTokenLimits(ctx, "gpt-4.1")
+		contextWindow, maxOutput, err := service.GetModelTokenLimits(ctx, "gpt-5.2")
 		if err != nil {
 			t.Errorf("Expected no error for valid model, got: %v", err)
 		}
@@ -254,7 +254,7 @@ func TestInitLLMClientErrorCases(t *testing.T) {
 		cancelledCtx, cancel := context.WithCancel(ctx)
 		cancel() // Cancel immediately
 
-		_, err := service.InitLLMClient(cancelledCtx, "test-key", "gpt-4.1", "")
+		_, err := service.InitLLMClient(cancelledCtx, "test-key", "gpt-5.2", "")
 		if err == nil {
 			t.Error("Expected error for cancelled context")
 		}

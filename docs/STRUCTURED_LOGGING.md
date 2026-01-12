@@ -552,7 +552,7 @@ The tokenization service logs the following structured fields:
   "level": "INFO",
   "message": "Model evaluation:",
   "correlation_id": "req_abc123",
-  "model": "gpt-4.1",
+  "model": "gpt-5.2",
   "provider": "openai",
   "context_window": 1000000,
   "status": "COMPATIBLE",
@@ -592,7 +592,7 @@ When models are marked as incompatible, the `reason` field provides detailed con
 
 ```json
 {
-  "model": "gpt-4.1",
+  "model": "gpt-5.2",
   "status": "SKIPPED",
   "reason": "requires 1200000 tokens but model only has 800000 usable tokens (1000000 total - 200000 safety margin)"
 }

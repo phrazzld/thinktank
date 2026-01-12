@@ -131,7 +131,7 @@ func TestTokenCountingService_CountTokensForModel(t *testing.T) {
 	}{
 		{
 			name:         "Valid OpenAI model",
-			model:        "o4-mini",
+			model:        "gpt-5.2",
 			instructions: "Write tests",
 			files: []interfaces.FileContent{
 				{Path: "test.txt", Content: "test content"},
@@ -140,7 +140,7 @@ func TestTokenCountingService_CountTokensForModel(t *testing.T) {
 		},
 		{
 			name:         "Valid Gemini model",
-			model:        "gemini-2.5-pro",
+			model:        "gemini-3-flash",
 			instructions: "Analyze code",
 			files: []interfaces.FileContent{
 				{Path: "code.go", Content: "package main"},
@@ -149,7 +149,7 @@ func TestTokenCountingService_CountTokensForModel(t *testing.T) {
 		},
 		{
 			name:         "Empty content",
-			model:        "o4-mini",
+			model:        "gpt-5.2",
 			instructions: "",
 			files:        []interfaces.FileContent{},
 			expectError:  false,
@@ -208,7 +208,7 @@ func TestTokenCountingService_CountTokensForModel_TokenizerFallback(t *testing.T
 		Files: []interfaces.FileContent{
 			{Path: "test.go", Content: "package main\nfunc main() {}"},
 		},
-	}, "o4-mini")
+	}, "gpt-5.2")
 
 	// Should not error - should gracefully fall back to estimation
 	assert.NoError(t, err)
@@ -240,14 +240,14 @@ func TestTokenCountingService_CountTokensForModel_EdgeCases(t *testing.T) {
 	}{
 		{
 			name:         "Very long instructions",
-			model:        "o4-mini",
+			model:        "gpt-5.2",
 			instructions: strings.Repeat("This is a very long instruction. ", 1000),
 			files:        []interfaces.FileContent{},
 			description:  "Should handle long instructions",
 		},
 		{
 			name:         "Very long file content",
-			model:        "o4-mini",
+			model:        "gpt-5.2",
 			instructions: "Process this",
 			files: []interfaces.FileContent{
 				{
@@ -259,7 +259,7 @@ func TestTokenCountingService_CountTokensForModel_EdgeCases(t *testing.T) {
 		},
 		{
 			name:         "Many small files",
-			model:        "gemini-2.5-pro",
+			model:        "gemini-3-flash",
 			instructions: "Process all these files",
 			files: func() []interfaces.FileContent {
 				files := make([]interfaces.FileContent, 50)
@@ -275,7 +275,7 @@ func TestTokenCountingService_CountTokensForModel_EdgeCases(t *testing.T) {
 		},
 		{
 			name:         "Unicode content",
-			model:        "o4-mini",
+			model:        "gpt-5.2",
 			instructions: "分析这个代码 🚀",
 			files: []interfaces.FileContent{
 				{Path: "unicode.txt", Content: "Hello 世界! 🌍 This has émojis and ñoñ-ASCII characters."},

@@ -7,8 +7,8 @@ The `models` package provides a simple, hardcoded system for managing LLM model 
 This package contains metadata for all supported LLM models, including their providers, API model IDs, token limits, and default parameters. The design prioritizes simplicity and explicitness over configurability.
 
 **Supported Models (7 total):**
-- **OpenAI**: gpt-4.1, o4-mini
-- **Gemini**: gemini-2.5-pro, gemini-2.5-flash
+- **OpenAI**: gpt-5.2, o3
+- **Gemini**: gemini-3-flash, gemini-3-flash
 - **OpenRouter**: openrouter/deepseek/deepseek-chat-v3-0324, openrouter/deepseek/deepseek-r1, openrouter/x-ai/grok-3-beta
 
 ## Package Structure
@@ -46,7 +46,7 @@ type ModelInfo struct {
 Returns complete model metadata for the given model name.
 
 ```go
-info, err := models.GetModelInfo("gpt-4.1")
+info, err := models.GetModelInfo("gpt-5.2")
 if err != nil {
     // Handle unknown model
 }
@@ -57,7 +57,7 @@ fmt.Printf("Provider: %s, Context: %d tokens\n", info.Provider, info.ContextWind
 Returns the provider name for a given model.
 
 ```go
-provider, err := models.GetProviderForModel("gemini-2.5-pro")
+provider, err := models.GetProviderForModel("gemini-3-flash")
 // provider == "gemini"
 ```
 
@@ -66,7 +66,7 @@ Returns a sorted slice of all supported model names.
 
 ```go
 allModels := models.ListAllModels()
-// ["gemini-2.5-flash", "gemini-2.5-pro", "gpt-4.1", "o4-mini", ...]
+// ["gemini-3-flash", "gemini-3-flash", "gpt-5.2", "o3", ...]
 ```
 
 #### `ListModelsForProvider(provider string) []string`
@@ -74,7 +74,7 @@ Returns models for a specific provider.
 
 ```go
 openaiModels := models.ListModelsForProvider("openai")
-// ["gpt-4.1", "o4-mini"]
+// ["gpt-5.2", "o3"]
 ```
 
 #### `GetAPIKeyEnvVar(provider string) string`
@@ -92,7 +92,7 @@ envVar := models.GetAPIKeyEnvVar("openai")  // Obsolete provider
 Checks if a model is supported.
 
 ```go
-if models.IsModelSupported("gpt-4.1") {
+if models.IsModelSupported("gpt-5.2") {
     // Model is supported
 }
 ```

@@ -637,8 +637,8 @@ func selectModelsForConfig(simplifiedConfig *SimplifiedConfig) ([]string, string
 	// 1. Multiple models are selected, OR
 	// 2. --synthesis flag is explicitly set
 	if len(selectedModels) > 1 || forceSynthesis {
-		// Always use gemini-2.5-pro as the default synthesis model for predictable behavior
-		synthesisModel = "gemini-2.5-pro"
+		// Always use gemini-3-pro as the default synthesis model for predictable behavior
+		synthesisModel = "gemini-3-pro"
 	}
 
 	// If no models were selected (shouldn't happen with safety margins), fall back to default
@@ -713,8 +713,8 @@ func selectModelsForConfigWithService(simplifiedConfig *SimplifiedConfig, tokenS
 	// 1. Multiple models are selected, OR
 	// 2. --synthesis flag is explicitly set
 	if len(selectedModels) > 1 || forceSynthesis {
-		// Always use gemini-2.5-pro as the default synthesis model for predictable behavior
-		synthesisModel = "gemini-2.5-pro"
+		// Always use gemini-3-pro as the default synthesis model for predictable behavior
+		synthesisModel = "gemini-3-pro"
 	}
 
 	// If only one model and no forced synthesis, use single model mode

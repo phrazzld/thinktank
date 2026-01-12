@@ -79,7 +79,7 @@ The simplified interface supports these flags:
 
 thinktank uses intelligent model selection based on your input size and available API keys:
 
-- **Small inputs**: Single fast model (e.g., `gemini-2.5-flash`)
+- **Small inputs**: Single fast model (e.g., `gemini-3-flash`)
 - **Large inputs**: Multiple high-capacity models with automatic synthesis
 - **With `--synthesis` flag**: Always uses multiple models with synthesis
 
@@ -163,13 +163,13 @@ thinktank supports the following LLM models out of the box:
 All models are now accessed through OpenRouter for unified API management:
 
 **OpenAI Models (via OpenRouter):**
-  - gpt-4.1 (openai/gpt-4.1)
-  - o4-mini (openai/o4-mini)
+  - gpt-5.2 (openai/gpt-5.2)
+  - o3 (openai/o3)
   - o3 (openai/o3)
 
 **Google Models (via OpenRouter):**
-  - gemini-2.5-flash (google/gemini-2.5-flash)
-  - gemini-2.5-pro (google/gemini-2.5-pro)
+  - gemini-3-flash (google/gemini-3-flash)
+  - gemini-3-flash (google/gemini-3-flash)
 
 **Native OpenRouter Models:**
   - openrouter/deepseek/deepseek-chat-v3-0324
@@ -257,9 +257,9 @@ In interactive terminals, thinktank displays Unicode symbols and semantic colors
 
 ```
 Processing 3 models...
-[1/3] gemini-2.5-pro: ✓ completed (2.3s)
-[2/3] gpt-4.1: ✓ completed (1.8s)
-[3/3] o4-mini: ✗ rate limited
+[1/3] gemini-3-flash: ✓ completed (2.3s)
+[2/3] gpt-5.2: ✓ completed (1.8s)
+[3/3] o3: ✗ rate limited
 
 SUMMARY
 ───────
@@ -274,13 +274,13 @@ SUMMARY
 
 OUTPUT FILES
 ────────────
-  gemini-2.5-pro.md                                                2.4K
-  gpt-4.1.md                                                       3.1K
+  gemini-3-flash.md                                                2.4K
+  gpt-5.2.md                                                       3.1K
   synthesis.md                                                     5.2K
 
 FAILED MODELS
 ─────────────
-  o4-mini                                                    rate limited
+  o3                                                    rate limited
 ```
 
 #### CI/Automation Output
@@ -289,9 +289,9 @@ In CI environments or when `CI=true`, output uses ASCII alternatives for maximum
 
 ```
 Processing 3 models...
-Completed model 1/3: gemini-2.5-pro (2.3s)
-Completed model 2/3: gpt-4.1 (1.8s)
-Failed model 3/3: o4-mini (rate limited)
+Completed model 1/3: gemini-3-flash (2.3s)
+Completed model 2/3: gpt-5.2 (1.8s)
+Failed model 3/3: o3 (rate limited)
 
 SUMMARY
 -------
@@ -306,13 +306,13 @@ SUMMARY
 
 OUTPUT FILES
 ------------
-  gemini-2.5-pro.md                                                2.4K
-  gpt-4.1.md                                                       3.1K
+  gemini-3-flash.md                                                2.4K
+  gpt-5.2.md                                                       3.1K
   synthesis.md                                                     5.2K
 
 FAILED MODELS
 -------------
-  o4-mini                                                    rate limited
+  o3                                                    rate limited
 ```
 
 #### Key Features

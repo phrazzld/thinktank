@@ -138,7 +138,7 @@ Validation → Service Init → Business Logic → Success/Error Handling
 - Custom timeout (line 689: `--timeout 5s`)
 - Rate limiting (line 691: `--rate-limit 30 --max-concurrent 3`)
 - File permissions (line 693: `--dir-permissions 0755 --file-permissions 0644`)
-- Multiple models (line 695: `--model gemini-2.5-pro --model gemini-2.5-flash`)
+- Multiple models (line 695: `--model gemini-3-flash --model gemini-3-flash`)
 - File filtering (line 697: `--include .go,.md --exclude .exe,.bin`)
 
 ### Test Coverage Gaps

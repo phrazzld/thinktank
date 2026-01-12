@@ -413,10 +413,10 @@ func TestModernConsoleWriter_ProcessingLineAlignment(t *testing.T) {
 	})
 
 	// Test ShowProcessingLine
-	writer.ShowProcessingLine("gemini-2.5-pro")
+	writer.ShowProcessingLine("gemini-3-flash")
 
 	// Test UpdateProcessingLine with success
-	writer.UpdateProcessingLine("gemini-2.5-pro", "[OK] 2.3s")
+	writer.UpdateProcessingLine("gemini-3-flash", "[OK] 2.3s")
 
 	// Test UpdateProcessingLine with failure
 	writer.UpdateProcessingLine("gpt-4o", "[X] rate limited")
@@ -431,7 +431,7 @@ func TestModernConsoleWriter_ProcessingLineAlignment(t *testing.T) {
 
 	// Verify processing line content
 	expectedElements := []string{
-		"gemini-2.5-pro",   // Model name
+		"gemini-3-flash",   // Model name
 		"processing...",    // Initial processing status
 		"[OK] 2.3s",        // Success status
 		"gpt-4o",           // Second model name

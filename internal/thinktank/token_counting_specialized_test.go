@@ -24,7 +24,7 @@ func TestTokenCountingService_GeminiTokenizer_BasicEnglish(t *testing.T) {
 		},
 	}
 
-	result, err := service.CountTokensForModel(context.Background(), req, "gemini-2.5-pro")
+	result, err := service.CountTokensForModel(context.Background(), req, "gemini-3-flash")
 
 	require.NoError(t, err)
 	assert.Greater(t, result.TotalTokens, 0, "Should count tokens for English text with Gemini")
@@ -62,7 +62,7 @@ for this type of mixed content compared to simple character estimation.
 	}
 
 	// Get Gemini result (should use SentencePiece)
-	geminiResult, err := service.CountTokensForModel(context.Background(), req, "gemini-2.5-pro")
+	geminiResult, err := service.CountTokensForModel(context.Background(), req, "gemini-3-flash")
 	require.NoError(t, err)
 
 	// Verify we got a reasonable result
@@ -73,7 +73,7 @@ for this type of mixed content compared to simple character estimation.
 	t.Logf("Gemini (SentencePiece) tokens: %d", geminiResult.TotalTokens)
 
 	// Test with a different model (should use different tokenizer)
-	estimationResult, err := service.CountTokensForModel(context.Background(), req, "o4-mini")
+	estimationResult, err := service.CountTokensForModel(context.Background(), req, "gpt-5.2")
 	require.NoError(t, err)
 
 	assert.Greater(t, estimationResult.TotalTokens, 0, "Estimation should count some tokens")
@@ -143,11 +143,11 @@ func TestTokenCountingService_NonEnglish_TokenCharacterRatioBreakdown(t *testing
 			}
 
 			// Test with Gemini (SentencePiece)
-			geminiResult, err := service.CountTokensForModel(context.Background(), req, "gemini-2.5-pro")
+			geminiResult, err := service.CountTokensForModel(context.Background(), req, "gemini-3-flash")
 			require.NoError(t, err, "Gemini should handle %s", tt.description)
 
 			// Test with a different model (estimation fallback)
-			estimationResult, err := service.CountTokensForModel(context.Background(), req, "o4-mini")
+			estimationResult, err := service.CountTokensForModel(context.Background(), req, "gpt-5.2")
 			require.NoError(t, err, "Estimation should handle %s", tt.description)
 
 			// Both should produce token counts

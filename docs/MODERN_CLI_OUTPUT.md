@@ -37,9 +37,9 @@ thinktank v2.0+ features a completely redesigned CLI output system that replaces
 **Example**:
 ```
 Processing 3 models...
-[1/3] gemini-2.5-pro: ✓ completed (2.3s)
-[2/3] gpt-4.1: ✓ completed (1.8s)
-[3/3] o4-mini: ✗ rate limited
+[1/3] gemini-3-flash: ✓ completed (2.3s)
+[2/3] gpt-5.2: ✓ completed (1.8s)
+[3/3] o3: ✗ rate limited
 
 SUMMARY
 ───────
@@ -66,9 +66,9 @@ SUMMARY
 **Example**:
 ```
 Processing 3 models...
-Completed model 1/3: gemini-2.5-pro (2.3s)
-Completed model 2/3: gpt-4.1 (1.8s)
-Failed model 3/3: o4-mini (rate limited)
+Completed model 1/3: gemini-3-flash (2.3s)
+Completed model 2/3: gpt-5.2 (1.8s)
+Failed model 3/3: o3 (rate limited)
 
 SUMMARY
 -------

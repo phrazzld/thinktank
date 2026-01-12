@@ -138,7 +138,7 @@ func TestProviderRateLimiter_BasicAcquireRelease(t *testing.T) {
 	ctx := context.Background()
 
 	// Should be able to acquire for valid provider
-	err := prl.Acquire(ctx, "openai", "gpt-4.1")
+	err := prl.Acquire(ctx, "openai", "gpt-5.2")
 	assert.NoError(t, err)
 
 	// Release should work
@@ -167,13 +167,13 @@ func TestProviderRateLimiter_CircuitBreakerIntegration(t *testing.T) {
 	assert.Equal(t, CircuitBreakerFailureThreshold, status.FailureCount)
 
 	// Acquire should fail when circuit is open
-	err := prl.Acquire(ctx, "openai", "gpt-4.1")
+	err := prl.Acquire(ctx, "openai", "gpt-5.2")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "circuit breaker")
 	assert.Contains(t, err.Error(), "OPEN")
 
 	// Other providers should still work
-	err = prl.Acquire(ctx, "gemini", "gemini-2.5-pro")
+	err = prl.Acquire(ctx, "gemini", "gemini-3-flash")
 	assert.NoError(t, err)
 	prl.Release("gemini")
 
@@ -338,7 +338,7 @@ func TestProviderRateLimiter_ConcurrentAccess(t *testing.T) {
 
 			for j := 0; j < operationsPerGoroutine; j++ {
 				// Acquire
-				err := prl.Acquire(ctx, "openai", "gpt-4.1")
+				err := prl.Acquire(ctx, "openai", "gpt-5.2")
 
 				errorMutex.Lock()
 				errors[errorIndex] = err
@@ -427,7 +427,7 @@ func BenchmarkProviderRateLimiter_Acquire(b *testing.B) {
 	perftest.RunBenchmark(b, "ProviderRateLimiter_Acquire", func(b *testing.B) {
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				err := prl.Acquire(ctx, "openai", "gpt-4.1")
+				err := prl.Acquire(ctx, "openai", "gpt-5.2")
 				if err == nil {
 					prl.Release("openai")
 				}

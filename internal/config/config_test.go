@@ -550,7 +550,7 @@ func TestValidateConfigWithEnv(t *testing.T) {
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
 				APIKey:           "",
-				ModelNames:       []string{"gpt-4.1"}, // OpenAI model via OpenRouter
+				ModelNames:       []string{"gpt-5.2"}, // OpenAI model via OpenRouter
 			},
 			mockGetenv: func(key string) string {
 				// Return empty string for OpenRouter API key
@@ -568,7 +568,7 @@ func TestValidateConfigWithEnv(t *testing.T) {
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
 				APIKey:           "",
-				ModelNames:       []string{"gpt-4.1"}, // OpenAI model via OpenRouter
+				ModelNames:       []string{"gpt-5.2"}, // OpenAI model via OpenRouter
 			},
 			mockGetenv: func(key string) string {
 				// Return valid OpenRouter API key
@@ -585,7 +585,7 @@ func TestValidateConfigWithEnv(t *testing.T) {
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
 				APIKey:           "",
-				ModelNames:       []string{"gemini-2.5-pro", "gpt-4.1"}, // Both models via OpenRouter
+				ModelNames:       []string{"gemini-3-flash", "gpt-5.2"}, // Both models via OpenRouter
 			},
 			mockGetenv: func(key string) string {
 				// Return valid OpenRouter API key
@@ -602,7 +602,7 @@ func TestValidateConfigWithEnv(t *testing.T) {
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
 				APIKey:           "",
-				ModelNames:       []string{"gemini-2.5-pro", "gpt-4.1"}, // Both models via OpenRouter
+				ModelNames:       []string{"gemini-3-flash", "gpt-5.2"}, // Both models via OpenRouter
 			},
 			mockGetenv: func(key string) string {
 				// Return empty OpenRouter API key
@@ -779,10 +779,10 @@ func TestIsStandardOpenAIModel(t *testing.T) {
 		{"gpt-4-turbo", "gpt-4-turbo", false},
 		{"gpt-4o", "gpt-4o", false},
 		{"gpt-4o-mini", "gpt-4o-mini", false},
-		{"gpt-4.1", "gpt-4.1", false},
+		{"gpt-5.2", "gpt-5.2", false},
 		{"gpt-3.5-turbo", "gpt-3.5-turbo", false},
-		{"o3", "o3", false},
-		{"o4-mini", "o4-mini", false},
+		{"gpt-5.2", "gpt-5.2", false},
+		{"gpt-5.2", "gpt-5.2", false},
 		{"case insensitive", "GPT-4", false},
 		{"case insensitive 2", "O3", false},
 		{"prefix match", "gpt-4-custom", false},

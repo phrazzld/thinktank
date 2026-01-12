@@ -42,7 +42,7 @@ func TestGatherProjectFiles(t *testing.T) {
 				ExcludeNames:     "test_",
 				DryRun:           false,
 				Verbose:          true,
-				ModelNames:       []string{"gemini-2.5-flash"},
+				ModelNames:       []string{"gemini-3-flash"},
 				LogLevel:         logutil.InfoLevel,
 			},
 			auditLogErr: nil,
@@ -65,7 +65,7 @@ func TestGatherProjectFiles(t *testing.T) {
 				InstructionsFile: "test.md",
 				Paths:            []string{"src/"},
 				DryRun:           true,
-				ModelNames:       []string{"gemini-2.5-flash"},
+				ModelNames:       []string{"gemini-3-flash"},
 				LogLevel:         logutil.InfoLevel,
 			},
 			auditLogErr: nil,
@@ -96,7 +96,7 @@ func TestGatherProjectFiles(t *testing.T) {
 				InstructionsFile: "test.md",
 				Paths:            []string{"src/"},
 				DryRun:           false,
-				ModelNames:       []string{"gemini-2.5-flash"},
+				ModelNames:       []string{"gemini-3-flash"},
 				LogLevel:         logutil.InfoLevel,
 			},
 			auditLogErr: errors.New("audit log write failed"),
@@ -377,7 +377,7 @@ func TestGenerateOutput(t *testing.T) {
 			name: "successful orchestrator creation in dry-run mode",
 			cliConfig: &config.CliConfig{
 				DryRun:                     true,
-				ModelNames:                 []string{"gemini-2.5-flash"},
+				ModelNames:                 []string{"gemini-3-flash"},
 				MaxConcurrentRequests:      5,
 				RateLimitRequestsPerMinute: 60,
 				DirPermissions:             0755,
@@ -393,7 +393,7 @@ func TestGenerateOutput(t *testing.T) {
 			name: "successful orchestrator creation with LLM client",
 			cliConfig: &config.CliConfig{
 				DryRun:                     false,
-				ModelNames:                 []string{"gemini-2.5-flash"},
+				ModelNames:                 []string{"gemini-3-flash"},
 				APIEndpoint:                "https://api.openrouter.ai",
 				MaxConcurrentRequests:      5,
 				RateLimitRequestsPerMinute: 60,
@@ -445,7 +445,7 @@ func TestGenerateOutput(t *testing.T) {
 			name: "LLM client initialization fails with rate limit error",
 			cliConfig: &config.CliConfig{
 				DryRun:      false,
-				ModelNames:  []string{"gemini-2.5-flash"},
+				ModelNames:  []string{"gemini-3-flash"},
 				APIEndpoint: "https://api.openrouter.ai",
 			},
 			apiService: func() *MockAPIService {
@@ -478,7 +478,7 @@ func TestGenerateOutput(t *testing.T) {
 			name: "LLM client initialization fails with generic error",
 			cliConfig: &config.CliConfig{
 				DryRun:      false,
-				ModelNames:  []string{"gemini-2.5-flash"},
+				ModelNames:  []string{"gemini-3-flash"},
 				APIEndpoint: "https://api.openrouter.ai",
 			},
 			apiService: func() *MockAPIService {

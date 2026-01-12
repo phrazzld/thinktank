@@ -17,12 +17,12 @@ func TestGeminiTokenizer_SupportsModel(t *testing.T) {
 		model     string
 		supported bool
 	}{
-		{"gemini-2.5-pro", true},
-		{"gemini-2.5-flash", true},
+		{"gemini-3-flash", true},
+		{"gemini-3-flash", true},
 		{"gemini-1.5-pro", true},
 		{"gemma-3-27b-it", true},
-		{"gpt-4.1", false},
-		{"o4-mini", false},
+		{"gpt-5.2", false},
+		{"gpt-5.2", false},
 		{"claude-3", false},
 		{"unknown-model", false},
 	}
@@ -45,10 +45,10 @@ func TestGeminiTokenizer_GetEncoding(t *testing.T) {
 		expectedEncoding string
 		expectError      bool
 	}{
-		{"gemini-2.5-pro", "sentencepiece", false},
-		{"gemini-2.5-flash", "sentencepiece", false},
+		{"gemini-3-flash", "sentencepiece", false},
+		{"gemini-3-flash", "sentencepiece", false},
 		{"gemma-3-27b-it", "sentencepiece", false},
-		{"gpt-4.1", "", true},
+		{"gpt-5.2", "", true},
 		{"unsupported-model", "", true},
 	}
 
@@ -75,18 +75,18 @@ func TestGeminiTokenizer_CountTokens_BasicFunctionality(t *testing.T) {
 	ctx := context.Background()
 
 	// Test that CountTokens now works with basic approximation
-	count, err := tokenizer.CountTokens(ctx, "Hello, world!", "gemini-2.5-pro")
+	count, err := tokenizer.CountTokens(ctx, "Hello, world!", "gemini-3-flash")
 	assert.NoError(t, err)
 	assert.Greater(t, count, 0)
 
 	// Test unsupported model still returns error
-	_, err = tokenizer.CountTokens(ctx, "Hello, world!", "gpt-4.1")
+	_, err = tokenizer.CountTokens(ctx, "Hello, world!", "gpt-5.2")
 	assert.Error(t, err)
 	assert.IsType(t, &TokenizerError{}, err)
 	assert.Contains(t, err.Error(), "unsupported model")
 
 	// Test empty text
-	count, err = tokenizer.CountTokens(ctx, "", "gemini-2.5-pro")
+	count, err = tokenizer.CountTokens(ctx, "", "gemini-3-flash")
 	assert.NoError(t, err) // Empty text should return 0 without error
 	assert.Equal(t, 0, count)
 }
@@ -108,7 +108,7 @@ func TestGeminiTokenizer_ClearCache(t *testing.T) {
 // Benchmark for when actual implementation is added
 func BenchmarkGeminiTokenizer_GetEncoding(b *testing.B) {
 	tokenizer := NewGeminiTokenizer()
-	model := "gemini-2.5-pro"
+	model := "gemini-3-flash"
 
 	perftest.RunBenchmark(b, "GeminiTokenizer_GetEncoding", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {

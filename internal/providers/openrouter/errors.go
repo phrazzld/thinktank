@@ -180,7 +180,7 @@ func FormatAPIErrorFromResponse(err error, statusCode int, responseBody []byte) 
 			strings.Contains(errorMessage, "organization must be verified to stream") {
 			// Special handling for o3 organization verification errors
 			if strings.Contains(errorMessage, "organization must be verified") {
-				llmError.Suggestion = "The o3 model requires an OpenAI organization-verified account. Personal API keys cannot access o3. You need to: 1) Verify your OpenAI organization at https://platform.openai.com/settings/organization/general, or 2) Use o4-mini instead, which works with personal accounts."
+				llmError.Suggestion = "The o3 model requires an OpenAI organization-verified account. Personal API keys cannot access o3. You need to: 1) Verify your OpenAI organization at https://platform.openai.com/settings/organization/general, or 2) Use o3 instead, which works with personal accounts."
 			} else {
 				llmError.Suggestion = "This model requires you to bring your own API key (BYOK). Please add your provider's API key at https://openrouter.ai/settings/integrations to use this model. Note: The 'streaming' error is misleading - the actual issue is missing BYOK configuration."
 			}

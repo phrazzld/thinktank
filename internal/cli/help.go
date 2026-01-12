@@ -52,8 +52,8 @@ FLAGS:
     --synthesis        Force synthesis mode with multiple models
                        Combines responses from different models for better results
 
-    --model MODEL      Select specific AI model (default: gemini-2.5-pro)
-                       Available: gemini-2.5-pro, gpt-4.1, o4-mini, and more
+    --model MODEL      Select specific AI model (default: gemini-3-flash)
+                       Available: gemini-3-flash, gpt-5.2, o3, and more
 
     --output-dir DIR   Set output directory (default: auto-generated timestamp)
                        Created if it doesn't exist
@@ -81,7 +81,7 @@ EXAMPLES:
     thinktank instructions.md ./project --dry-run
 
     # Use a specific model with verbose output
-    thinktank guide.md main.go --model gpt-4.1 --verbose
+    thinktank guide.md main.go --model gpt-5.2 --verbose
 
     # Force synthesis mode for comprehensive analysis
     thinktank analysis.txt ./complex-code --synthesis
@@ -132,7 +132,7 @@ TROUBLESHOOTING:
         Large codebases may exceed model context limits.
         Use --dry-run to check accurate token counts before processing.
         Consider analyzing specific subdirectories or using a model
-        with a larger context window (gpt-4.1, gemini-2.5-pro).
+        with a larger context window (gpt-5.2, gemini-3-flash).
 
 MORE INFORMATION:
     Documentation: https://github.com/phrazzld/thinktank

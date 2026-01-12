@@ -177,7 +177,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 
 	// Define the model flag using our custom stringSliceFlag type to support multiple values
 	modelFlag := &stringSliceFlag{}
-	flagSet.Var(modelFlag, "model", fmt.Sprintf("Model to use for generation (repeatable). All models use OpenRouter (e.g., %s, gpt-4.1, o4-mini). Default: %s", defaultModel, defaultModel))
+	flagSet.Var(modelFlag, "model", fmt.Sprintf("Model to use for generation (repeatable). All models use OpenRouter (e.g., %s, gpt-5.2, o3). Default: %s", defaultModel, defaultModel))
 
 	// Set custom usage message
 	flagSet.Usage = func() {

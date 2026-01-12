@@ -944,14 +944,14 @@ func TestParseFlagsWithEnv(t *testing.T) {
             name: "valid basic flags",
             args: []string{
                 "--instructions", "/path/to/instructions.md",
-                "--model", "gemini-2.5-pro",
+                "--model", "gemini-3-flash",
                 "/path/to/input",
             },
             expectError: false,
             expectedCfg: func(cfg *config.CliConfig) bool {
                 return cfg.InstructionsFile == "/path/to/instructions.md" &&
                        len(cfg.ModelNames) == 1 &&
-                       cfg.ModelNames[0] == "gemini-2.5-pro"
+                       cfg.ModelNames[0] == "gemini-3-flash"
             },
         },
         {

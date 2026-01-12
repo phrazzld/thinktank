@@ -143,7 +143,7 @@ type ConsoleWriter interface {
 	// Example:
 	// OUTPUT FILES
 	// ────────────
-	//   gemini-2.5-pro.md                     4.2K
+	//   gemini-3-flash.md                     4.2K
 	//   claude-3-5-sonnet.md                  3.8K
 	ShowOutputFiles(files []OutputFile)
 

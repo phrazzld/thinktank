@@ -30,17 +30,17 @@ func TestSynthesisModelDirectValidation(t *testing.T) {
 		},
 		{
 			name:           "Supported GPT model",
-			synthesisModel: "gpt-4.1",
+			synthesisModel: "gpt-5.2",
 			expectValid:    true,
 		},
 		{
 			name:           "Supported Gemini model",
-			synthesisModel: "gemini-2.5-pro",
+			synthesisModel: "gemini-3-flash",
 			expectValid:    true,
 		},
 		{
 			name:           "Supported OpenRouter model",
-			synthesisModel: "openrouter/deepseek/deepseek-r1-0528",
+			synthesisModel: "deepseek-v3.2",
 			expectValid:    true,
 		},
 		{

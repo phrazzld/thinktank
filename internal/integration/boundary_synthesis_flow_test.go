@@ -18,15 +18,15 @@ func TestBoundarySynthesisFlow(t *testing.T) {
 	IntegrationTestWithBoundaries(t, func(env *BoundaryTestEnv) {
 		// Configure test parameters
 		instructions := "Test instructions for synthesis"
-		modelNames := []string{"o4-mini", "gpt-4.1", "gemini-2.5-pro"}
-		synthesisModel := "gpt-4.1"
+		modelNames := []string{"kimi-k2-thinking", "gpt-5.2", "gemini-3-flash"}
+		synthesisModel := "gpt-5.2"
 
 		// Set up mock responses for each model
 		mockOutputs := map[string]string{
-			"o4-mini":        "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
-			"gpt-4.1":        "# Output from Model 2\n\nThis is test output from gpt-4o.",
-			"gemini-2.5-pro": "# Output from Model 3\n\nThis is test output from gemini-2.5-pro.",
-			synthesisModel:   "# Synthesized Output\n\nThis content combines insights from all models.",
+			"kimi-k2-thinking": "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
+			"gpt-5.2":          "# Output from Model 2\n\nThis is test output from gpt-4o.",
+			"gemini-3-flash":   "# Output from Model 3\n\nThis is test output from gemini-3-flash.",
+			synthesisModel:     "# Synthesized Output\n\nThis content combines insights from all models.",
 		}
 
 		// Setup the test environment using the standard helper

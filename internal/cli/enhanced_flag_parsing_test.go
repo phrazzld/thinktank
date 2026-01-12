@@ -55,7 +55,7 @@ func TestParseOptionalFlags_AllFlags(t *testing.T) {
 		},
 		{
 			name:          "newer flags with equals syntax",
-			args:          []string{"--json-logs", "--model=gemini-2.5-pro", "--no-progress", "--output-dir=./results", "instructions.md", "src/"},
+			args:          []string{"--json-logs", "--model=gemini-3-flash", "--no-progress", "--output-dir=./results", "instructions.md", "src/"},
 			expectedFlags: FlagJsonLogs | FlagNoProgress,
 			description:   "Newer flags should work with equals syntax for value flags",
 		},
@@ -260,7 +260,7 @@ func TestParseOptionalFlags_PositionalArguments(t *testing.T) {
 		},
 		{
 			name:                 "equals syntax with positional args",
-			args:                 []string{"--model=gemini-2.5-pro", "test.md", "--output-dir=./results", "src/"},
+			args:                 []string{"--model=gemini-3-flash", "test.md", "--output-dir=./results", "src/"},
 			expectedInstructions: "test.md",
 			expectedTarget:       "src/",
 			expectedFlags:        0,

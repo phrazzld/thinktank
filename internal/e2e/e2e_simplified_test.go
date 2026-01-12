@@ -214,7 +214,7 @@ func TestSimplifiedParserEdgeCases(t *testing.T) {
 		},
 		{
 			name:        "ModelFlagWithValue",
-			args:        []string{"thinktank", instructionsFile, srcDir, "--model", "gpt-4.1"},
+			args:        []string{"thinktank", instructionsFile, srcDir, "--model", "gpt-5.2"},
 			expectError: false,
 		},
 		{
@@ -225,7 +225,7 @@ func TestSimplifiedParserEdgeCases(t *testing.T) {
 		},
 		{
 			name:        "ModelFlagEqualsFormat",
-			args:        []string{"thinktank", instructionsFile, srcDir, "--model=gpt-4.1"},
+			args:        []string{"thinktank", instructionsFile, srcDir, "--model=gpt-5.2"},
 			expectError: false,
 		},
 		{

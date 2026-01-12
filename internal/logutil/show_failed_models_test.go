@@ -20,7 +20,7 @@ func TestShowFailedModels(t *testing.T) {
 	failedModels := []FailedModel{
 		{Name: "gpt-4o", Reason: "rate limited"},
 		{Name: "claude-3-5-sonnet", Reason: "invalid API key"},
-		{Name: "gemini-2.5-pro", Reason: "quota exceeded"},
+		{Name: "gemini-3-flash", Reason: "quota exceeded"},
 	}
 
 	// Create console writer with test options
@@ -48,7 +48,7 @@ func TestShowFailedModels(t *testing.T) {
 		"rate limited",      // Failure reason 1
 		"claude-3-5-sonnet", // Model name 2
 		"invalid API key",   // Failure reason 2
-		"gemini-2.5-pro",    // Model name 3
+		"gemini-3-flash",    // Model name 3
 		"quota exceeded",    // Failure reason 3
 	}
 
@@ -67,7 +67,7 @@ func TestShowFailedModels(t *testing.T) {
 	lines := strings.Split(output, "\n")
 	var modelLines []string
 	for _, line := range lines {
-		if strings.Contains(line, "gpt-4o") || strings.Contains(line, "claude-3-5-sonnet") || strings.Contains(line, "gemini-2.5-pro") {
+		if strings.Contains(line, "gpt-4o") || strings.Contains(line, "claude-3-5-sonnet") || strings.Contains(line, "gemini-3-flash") {
 			modelLines = append(modelLines, line)
 		}
 	}
@@ -80,7 +80,7 @@ func TestShowFailedModels(t *testing.T) {
 	modelReasonPairs := map[string]string{
 		"gpt-4o":            "rate limited",
 		"claude-3-5-sonnet": "invalid API key",
-		"gemini-2.5-pro":    "quota exceeded",
+		"gemini-3-flash":    "quota exceeded",
 	}
 
 	for modelName, expectedReason := range modelReasonPairs {

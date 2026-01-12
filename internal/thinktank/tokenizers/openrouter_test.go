@@ -156,14 +156,14 @@ func TestOpenRouterTokenizer_ConsistencyWithOpenAI(t *testing.T) {
 
 	testText := "The quick brown fox jumps over the lazy dog."
 
-	// OpenRouter should give same count as OpenAI o4-mini (o200k_base)
+	// OpenRouter should give same count as OpenAI o3 (o200k_base)
 	openrouterCount, err := openrouterTokenizer.CountTokens(ctx, testText, "openrouter/anthropic/claude-3-sonnet")
 	require.NoError(t, err)
 
-	openaiCount, err := openaiTokenizer.CountTokens(ctx, testText, "o4-mini")
+	openaiCount, err := openaiTokenizer.CountTokens(ctx, testText, "gpt-5.2")
 	require.NoError(t, err)
 
-	assert.Equal(t, openaiCount, openrouterCount, "OpenRouter tokenization should match OpenAI o4-mini (o200k_base)")
+	assert.Equal(t, openaiCount, openrouterCount, "OpenRouter tokenization should match OpenAI o3 (o200k_base)")
 }
 
 // Benchmark tests to validate performance characteristics
@@ -202,7 +202,7 @@ func BenchmarkOpenRouterTokenizer_vs_OpenAI(b *testing.B) {
 		perftest.RunBenchmark(b, "OpenRouterTokenizer_vs_OpenAI_Direct", func(b *testing.B) {
 			perftest.ReportAllocs(b)
 			for i := 0; i < b.N; i++ {
-				_, err := openaiTokenizer.CountTokens(ctx, text, "o4-mini")
+				_, err := openaiTokenizer.CountTokens(ctx, text, "gpt-5.2")
 				if err != nil {
 					b.Fatal(err)
 				}

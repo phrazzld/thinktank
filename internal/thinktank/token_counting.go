@@ -297,9 +297,9 @@ func (s *tokenCountingServiceImpl) GetCompatibleModels(ctx context.Context, req 
 			provider string
 			context  int
 		}{
-			{"gpt-4.1", "openrouter", 1000000},
-			{"o4-mini", "openrouter", 128000},
-			{"gemini-2.5-pro", "openrouter", 2097152},
+			{"gpt-5.2", "openrouter", 1000000},
+			{"gpt-5.2", "openrouter", 128000},
+			{"gemini-3-flash", "openrouter", 2097152},
 		}
 
 		for _, model := range commonModels {

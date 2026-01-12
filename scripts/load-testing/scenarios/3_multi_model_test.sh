@@ -34,8 +34,8 @@ if run_thinktank \
     "Multi-provider workload (Gemini, OpenAI, OpenRouter)" \
     "tmp/load-testing/multi-model/test1_multi_provider" \
     --instructions "$COMPLEX_INSTRUCTIONS" \
-    --model "gemini-2.5-pro" \
-    --model "gpt-4.1" \
+    --model "gemini-3-flash" \
+    --model "gpt-5.2" \
     --model "openrouter/deepseek/deepseek-chat-v3-0324" \
     "$WORKLOAD_DIR_LARGE"; then
 
@@ -56,9 +56,9 @@ if run_thinktank \
     "Multi-model with synthesis" \
     "tmp/load-testing/multi-model/test2_synthesis" \
     --instructions "$COMPLEX_INSTRUCTIONS" \
-    --model "gemini-2.5-flash" \
-    --model "o4-mini" \
-    --synthesis-model "gpt-4.1" \
+    --model "gemini-3-flash" \
+    --model "o3" \
+    --synthesis-model "gpt-5.2" \
     "$WORKLOAD_DIR_LARGE"; then
 
     SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
@@ -85,8 +85,8 @@ if run_thinktank \
     "Cross-provider performance comparison" \
     "tmp/load-testing/multi-model/test3_comparison" \
     --instructions "$SIMPLE_INSTRUCTIONS" \
-    --model "gemini-2.5-flash" \
-    --model "o4-mini" \
+    --model "gemini-3-flash" \
+    --model "o3" \
     --model "openrouter/deepseek/deepseek-chat-v3-0324:free" \
     --max-concurrent 3 \
     "$WORKLOAD_DIR_SMALL"; then

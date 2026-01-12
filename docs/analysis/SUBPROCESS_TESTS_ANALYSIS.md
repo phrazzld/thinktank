@@ -118,7 +118,7 @@ This document analyzes the failing subprocess tests in `internal/cli/main_test.g
 - Only validates configuration parsing
 
 #### 4. "main with multiple models" (Lines 797-816)
-**Flags Tested**: `--dry-run`, `--model gemini-2.5-pro`, `--model gemini-2.5-flash`, `--instructions`, `--output-dir`
+**Flags Tested**: `--dry-run`, `--model gemini-3-flash`, `--model gemini-3-flash`, `--instructions`, `--output-dir`
 **Business Logic Validated**:
 - Multiple model flag parsing
 - Model configuration validation

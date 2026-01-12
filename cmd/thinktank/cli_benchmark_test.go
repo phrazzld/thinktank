@@ -27,7 +27,7 @@ func BenchmarkParseFlags(b *testing.B) {
 			args: []string{
 				"--instructions", "instructions.md",
 				"--output-dir", "./output",
-				"--model", "gemini-2.5-pro",
+				"--model", "gemini-3-flash",
 				"--include", "*.go,*.md",
 				"--exclude", "*.test.go",
 				"--verbose",
@@ -40,8 +40,8 @@ func BenchmarkParseFlags(b *testing.B) {
 			args: []string{
 				"--instructions", "instructions.md",
 				"--output-dir", "./output",
-				"--model", "gemini-2.5-pro",
-				"--model", "o4-mini",
+				"--model", "gemini-3-flash",
+				"--model", "gpt-5.2",
 				"--include", "*.go,*.md,*.txt",
 				"--exclude", "*.test.go,*.bench.go",
 				"--exclude-names", "vendor,node_modules",
@@ -87,7 +87,7 @@ func BenchmarkValidateInputs(b *testing.B) {
 			config: &config.CliConfig{
 				InstructionsFile: "test.md",
 				Paths:            []string{"file.go"},
-				ModelNames:       []string{"gemini-2.5-pro"},
+				ModelNames:       []string{"gemini-3-flash"},
 				OutputDir:        "./output",
 				Timeout:          30 * time.Second,
 				Include:          "*.go",
@@ -105,7 +105,7 @@ func BenchmarkValidateInputs(b *testing.B) {
 			config: &config.CliConfig{
 				InstructionsFile: "test.md",
 				Paths:            []string{"./src", "./docs"},
-				ModelNames:       []string{"gemini-2.5-pro", "o4-mini", "gemini-2.5-flash"},
+				ModelNames:       []string{"gemini-3-flash", "gpt-5.2", "gemini-3-flash"},
 				OutputDir:        "./output",
 				Timeout:          60 * time.Second,
 				Include:          "*.go,*.md,*.txt",

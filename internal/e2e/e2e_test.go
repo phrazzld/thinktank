@@ -135,8 +135,8 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	env.DefaultFlags = testFlags{
 		Instructions:  "", // Will be set by specific tests
 		OutputDir:     filepath.Join(tempDir, "output"),
-		ModelNames:    []string{"gemini-2.5-pro"}, // Use model from models package
-		Model:         []string{"gemini-2.5-pro"}, // Use model from models package
+		ModelNames:    []string{"gemini-3-flash"}, // Use model from models package
+		Model:         []string{"gemini-3-flash"}, // Use model from models package
 		APIKey:        "test-api-key",
 		Include:       "",
 		Exclude:       ".git,node_modules",
@@ -184,8 +184,8 @@ func (e *TestEnv) startMockServer() {
 
 	// Handle Gemini content generation requests - respond to all model variants
 	modelPaths := []string{
-		"/v1/models/gemini-2.5-pro:generateContent",
-		"/v1/models/gemini-2.5-flash:generateContent",
+		"/v1/models/gemini-3-flash:generateContent",
+		"/v1/models/gemini-3-flash:generateContent",
 		"/v1/models/gemini-pro:generateContent",
 		"/v1/models/gemini-1.5-pro:generateContent",
 	}
@@ -248,8 +248,8 @@ func (e *TestEnv) startMockServer() {
 
 	// Handle Gemini token counting requests - respond to all model variants
 	tokenCountPaths := []string{
-		"/v1/models/gemini-2.5-pro:countTokens",
-		"/v1/models/gemini-2.5-flash:countTokens",
+		"/v1/models/gemini-3-flash:countTokens",
+		"/v1/models/gemini-3-flash:countTokens",
 		"/v1/models/gemini-pro:countTokens",
 		"/v1/models/gemini-1.5-pro:countTokens",
 	}
@@ -328,13 +328,13 @@ func (e *TestEnv) startMockServer() {
 		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"data": []map[string]interface{}{
 				{
-					"id":       "gpt-4.1",
+					"id":       "gpt-5.2",
 					"object":   "model",
 					"created":  1677610602,
 					"owned_by": "openai",
 				},
 				{
-					"id":       "o4-mini",
+					"id":       "gpt-5.2",
 					"object":   "model",
 					"created":  1677610602,
 					"owned_by": "openai",
@@ -471,8 +471,8 @@ func (e *TestEnv) RunThinktank(args []string, stdin io.Reader) (stdout, stderr s
 		fmt.Sprintf("OPENROUTER_API_URL=%s", e.MockServer.URL),
 
 		// Hard-code the model name to match mock server path
-		"GEMINI_MODEL_NAME=gemini-2.5-pro",
-		"OPENAI_MODEL_NAME=o4-mini",
+		"GEMINI_MODEL_NAME=gemini-3-flash",
+		"OPENAI_MODEL_NAME=o3",
 		"OPENROUTER_MODEL_NAME=openrouter/meta-llama/llama-4-scout",
 
 		// Force env var source for all providers

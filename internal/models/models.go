@@ -76,99 +76,87 @@ func intConstraint(min, max float64) ParameterConstraint {
 // modelDefinitions contains hardcoded metadata for all supported LLM models.
 // This replaces the complex YAML-based registry system with simple, direct access.
 // Access is provided through public functions like GetModelInfo, ListAllModels, etc.
+//
+// Model registry last updated: January 2026
+// Sources: OpenRouter API documentation (https://openrouter.ai/models)
 var modelDefinitions = map[string]ModelInfo{
-	// OpenAI Models
-	"gpt-4.1": {
+	// =============================================================================
+	// ANTHROPIC CLAUDE MODELS
+	// =============================================================================
+
+	// Claude Opus 4.5 - Frontier reasoning model, best for complex software engineering
+	// https://openrouter.ai/anthropic/claude-opus-4.5
+	"claude-opus-4.5": {
 		Provider:        "openrouter",
-		APIModelID:      "openai/gpt-4.1",
-		ContextWindow:   1000000,
-		MaxOutputTokens: 200000,
-		DefaultParams: map[string]interface{}{
-			"temperature":       0.7,
-			"top_p":             1.0,
-			"frequency_penalty": 0.0,
-			"presence_penalty":  0.0,
-		},
-		ParameterConstraints: map[string]ParameterConstraint{
-			"temperature":       floatConstraint(0.0, 2.0),
-			"top_p":             floatConstraint(0.0, 1.0),
-			"max_tokens":        intConstraint(1, 1000000),
-			"frequency_penalty": floatConstraint(-2.0, 2.0),
-			"presence_penalty":  floatConstraint(-2.0, 2.0),
-		},
-	},
-	"o4-mini": {
-		Provider:        "openrouter",
-		APIModelID:      "openai/o4-mini",
+		APIModelID:      "anthropic/claude-opus-4.5",
 		ContextWindow:   200000,
-		MaxOutputTokens: 200000,
+		MaxOutputTokens: 64000,
 		DefaultParams: map[string]interface{}{
-			"temperature":       1.0,
-			"top_p":             1.0,
-			"frequency_penalty": 0.0,
-			"presence_penalty":  0.0,
-			"reasoning_effort":  "high",
+			"temperature": 0.7,
+			"top_p":       0.95,
 		},
 		ParameterConstraints: map[string]ParameterConstraint{
-			"temperature":       floatConstraint(0.0, 2.0),
-			"top_p":             floatConstraint(0.0, 1.0),
-			"max_tokens":        intConstraint(1, 200000),
-			"frequency_penalty": floatConstraint(-2.0, 2.0),
-			"presence_penalty":  floatConstraint(-2.0, 2.0),
-			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}},
+			"temperature": floatConstraint(0.0, 1.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 64000),
 		},
 	},
 
-	// GPT-5 Models
-	"gpt-5": {
+	// Claude Sonnet 4.5 - Best agentic coding model, #1 SWE-bench (77.2%)
+	// https://openrouter.ai/anthropic/claude-sonnet-4.5
+	"claude-sonnet-4.5": {
 		Provider:        "openrouter",
-		APIModelID:      "openai/gpt-5",
-		ContextWindow:   400000, // 272K input + 128K output
-		MaxOutputTokens: 128000,
-		DefaultParams: map[string]interface{}{
-			"temperature":       0.7,
-			"top_p":             1.0,
-			"frequency_penalty": 0.0,
-			"presence_penalty":  0.0,
-			"reasoning_effort":  "high",
-		},
-		ParameterConstraints: map[string]ParameterConstraint{
-			"temperature":       floatConstraint(0.0, 2.0),
-			"top_p":             floatConstraint(0.0, 1.0),
-			"max_tokens":        intConstraint(1, 128000),
-			"frequency_penalty": floatConstraint(-2.0, 2.0),
-			"presence_penalty":  floatConstraint(-2.0, 2.0),
-			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}},
-		},
-	},
-	"gpt-5-mini": {
-		Provider:        "openrouter",
-		APIModelID:      "openai/gpt-5-mini",
-		ContextWindow:   400000, // 272K input + 128K output
-		MaxOutputTokens: 128000,
-		DefaultParams: map[string]interface{}{
-			"temperature":       0.7,
-			"top_p":             1.0,
-			"frequency_penalty": 0.0,
-			"presence_penalty":  0.0,
-			"reasoning_effort":  "medium",
-		},
-		ParameterConstraints: map[string]ParameterConstraint{
-			"temperature":       floatConstraint(0.0, 2.0),
-			"top_p":             floatConstraint(0.0, 1.0),
-			"max_tokens":        intConstraint(1, 128000),
-			"frequency_penalty": floatConstraint(-2.0, 2.0),
-			"presence_penalty":  floatConstraint(-2.0, 2.0),
-			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}},
-		},
-	},
-
-	// Gemini Models
-	"gemini-2.5-pro": {
-		Provider:        "openrouter",
-		APIModelID:      "google/gemini-2.5-pro",
+		APIModelID:      "anthropic/claude-sonnet-4.5",
 		ContextWindow:   1000000,
-		MaxOutputTokens: 65000,
+		MaxOutputTokens: 64000,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.95,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 1.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 64000),
+		},
+	},
+
+	// =============================================================================
+	// OPENAI MODELS
+	// =============================================================================
+
+	// GPT-5.2 - Latest flagship, 100% AIME 2025, lowest control flow errors
+	// https://openrouter.ai/openai/gpt-5.2
+	"gpt-5.2": {
+		Provider:        "openrouter",
+		APIModelID:      "openai/gpt-5.2",
+		ContextWindow:   400000,
+		MaxOutputTokens: 128000,
+		DefaultParams: map[string]interface{}{
+			"temperature":       0.7,
+			"top_p":             1.0,
+			"frequency_penalty": 0.0,
+			"presence_penalty":  0.0,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 128000),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
+		},
+	},
+
+	// =============================================================================
+	// GOOGLE GEMINI MODELS
+	// =============================================================================
+
+	// Gemini 3 Flash - Fast, cheap, 78% SWE-bench, 1M context (DEFAULT)
+	// https://openrouter.ai/google/gemini-3-flash-preview
+	"gemini-3-flash": {
+		Provider:        "openrouter",
+		APIModelID:      "google/gemini-3-flash-preview",
+		ContextWindow:   1048576,
+		MaxOutputTokens: 65535,
 		DefaultParams: map[string]interface{}{
 			"temperature": 0.7,
 			"top_p":       0.95,
@@ -178,14 +166,17 @@ var modelDefinitions = map[string]ModelInfo{
 			"temperature": floatConstraint(0.0, 2.0),
 			"top_p":       floatConstraint(0.0, 1.0),
 			"top_k":       intConstraint(1, 100),
-			"max_tokens":  intConstraint(1, 65000),
+			"max_tokens":  intConstraint(1, 65535),
 		},
 	},
-	"gemini-2.5-flash": {
+
+	// Gemini 3 Pro - Strong reasoning, 1M multimodal context
+	// https://openrouter.ai/google/gemini-3-pro-preview
+	"gemini-3-pro": {
 		Provider:        "openrouter",
-		APIModelID:      "google/gemini-2.5-flash",
-		ContextWindow:   1000000,
-		MaxOutputTokens: 65000,
+		APIModelID:      "google/gemini-3-pro-preview",
+		ContextWindow:   1048576,
+		MaxOutputTokens: 65536,
 		DefaultParams: map[string]interface{}{
 			"temperature": 0.7,
 			"top_p":       0.95,
@@ -195,37 +186,126 @@ var modelDefinitions = map[string]ModelInfo{
 			"temperature": floatConstraint(0.0, 2.0),
 			"top_p":       floatConstraint(0.0, 1.0),
 			"top_k":       intConstraint(1, 100),
-			"max_tokens":  intConstraint(1, 65000),
+			"max_tokens":  intConstraint(1, 65536),
 		},
 	},
 
-	"o3": {
+	// =============================================================================
+	// XAI GROK MODELS
+	// =============================================================================
+
+	// Grok 4.1 Fast - #1 LMArena Elo, 2M context, 65% less hallucination
+	// https://openrouter.ai/x-ai/grok-4.1-fast
+	"grok-4.1-fast": {
 		Provider:        "openrouter",
-		APIModelID:      "openai/o3",
-		ContextWindow:   200000,
-		MaxOutputTokens: 200000,
+		APIModelID:      "x-ai/grok-4.1-fast",
+		ContextWindow:   2000000,
+		MaxOutputTokens: 30000,
 		DefaultParams: map[string]interface{}{
-			"temperature":       1.0,
-			"top_p":             1.0,
-			"frequency_penalty": 0.0,
-			"presence_penalty":  0.0,
-			"reasoning_effort":  "high", // Maximum reasoning effort for complex tasks
+			"temperature": 0.7,
+			"top_p":       0.95,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 30000),
+		},
+	},
+
+	// Grok Code Fast 1 - Specialized for coding, 190 tokens/sec
+	// https://openrouter.ai/x-ai/grok-code-fast-1
+	"grok-code-fast-1": {
+		Provider:        "openrouter",
+		APIModelID:      "x-ai/grok-code-fast-1",
+		ContextWindow:   256000,
+		MaxOutputTokens: 10000,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.95,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 10000),
+		},
+	},
+
+	// =============================================================================
+	// DEEPSEEK MODELS
+	// =============================================================================
+
+	// DeepSeek V3.2 - Best value reasoning model
+	// https://openrouter.ai/deepseek/deepseek-v3.2
+	"deepseek-v3.2": {
+		Provider:        "openrouter",
+		APIModelID:      "deepseek/deepseek-v3.2",
+		ContextWindow:   163840,
+		MaxOutputTokens: 65536,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.95,
 		},
 		ParameterConstraints: map[string]ParameterConstraint{
 			"temperature":       floatConstraint(0.0, 2.0),
 			"top_p":             floatConstraint(0.0, 1.0),
-			"max_tokens":        intConstraint(1, 200000),
+			"max_tokens":        intConstraint(1, 65536),
 			"frequency_penalty": floatConstraint(-2.0, 2.0),
 			"presence_penalty":  floatConstraint(-2.0, 2.0),
-			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}}, // String enum values
 		},
-		RequiresBYOK: true, // o3 requires users to bring their own OpenAI API key
 	},
 
-	"kimi-k2": {
+	// DeepSeek V3.2 Speciale - Enhanced reasoning variant with mandatory thinking
+	// https://openrouter.ai/deepseek/deepseek-v3.2-speciale
+	"deepseek-v3.2-speciale": {
 		Provider:        "openrouter",
-		APIModelID:      "moonshotai/kimi-k2",
-		ContextWindow:   131072,
+		APIModelID:      "deepseek/deepseek-v3.2-speciale",
+		ContextWindow:   163840,
+		MaxOutputTokens: 65536,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.95,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 65536),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
+		},
+	},
+
+	// =============================================================================
+	// MOONSHOT KIMI MODELS
+	// =============================================================================
+
+	// Kimi K2 Thinking - 1T params, 99.1% AIME, #2 overall (after GPT-5)
+	// https://openrouter.ai/moonshotai/kimi-k2-thinking
+	"kimi-k2-thinking": {
+		Provider:        "openrouter",
+		APIModelID:      "moonshotai/kimi-k2-thinking",
+		ContextWindow:   262144,
+		MaxOutputTokens: 65535,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.95,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 65535),
+		},
+	},
+
+	// =============================================================================
+	// MINIMAX MODELS
+	// =============================================================================
+
+	// MiniMax M2.1 - 10B active params, 72.5% SWE-bench multilingual, 8% cost of Claude
+	// https://openrouter.ai/minimax/minimax-m2.1
+	"minimax-m2.1": {
+		Provider:        "openrouter",
+		APIModelID:      "minimax/minimax-m2.1",
+		ContextWindow:   196608,
 		MaxOutputTokens: 131072,
 		DefaultParams: map[string]interface{}{
 			"temperature": 0.7,
@@ -238,12 +318,17 @@ var modelDefinitions = map[string]ModelInfo{
 		},
 	},
 
-	// OpenRouter Models
-	"openrouter/deepseek/deepseek-chat-v3-0324": {
+	// =============================================================================
+	// ZHIPU GLM MODELS
+	// =============================================================================
+
+	// GLM-4.7 - 355B/32B active, 95.7% AIME, 84.9% LiveCodeBench, MIT license
+	// https://openrouter.ai/z-ai/glm-4.7
+	"glm-4.7": {
 		Provider:        "openrouter",
-		APIModelID:      "deepseek/deepseek-chat-v3-0324",
-		ContextWindow:   65536,
-		MaxOutputTokens: 100000,
+		APIModelID:      "z-ai/glm-4.7",
+		ContextWindow:   202752,
+		MaxOutputTokens: 65535,
 		DefaultParams: map[string]interface{}{
 			"temperature": 0.7,
 			"top_p":       0.95,
@@ -251,68 +336,40 @@ var modelDefinitions = map[string]ModelInfo{
 		ParameterConstraints: map[string]ParameterConstraint{
 			"temperature": floatConstraint(0.0, 2.0),
 			"top_p":       floatConstraint(0.0, 1.0),
-			"max_tokens":  intConstraint(1, 100000),
+			"max_tokens":  intConstraint(1, 65535),
 		},
 	},
-	"openrouter/deepseek/deepseek-r1-0528": {
+
+	// =============================================================================
+	// MISTRAL MODELS
+	// =============================================================================
+
+	// Devstral 2 - 123B dense transformer, specialized for agentic coding
+	// https://openrouter.ai/mistralai/devstral-2512
+	"devstral-2": {
 		Provider:        "openrouter",
-		APIModelID:      "deepseek/deepseek-r1-0528",
-		ContextWindow:   128000,
-		MaxOutputTokens: 32768,
+		APIModelID:      "mistralai/devstral-2512",
+		ContextWindow:   262144,
+		MaxOutputTokens: 65536,
 		DefaultParams: map[string]interface{}{
-			"temperature": 1.0,
-			"top_p":       1.0,
-			"stop":        []string{"<｜User｜>", "<｜end of sentence｜>"},
+			"temperature": 0.7,
+			"top_p":       0.95,
 		},
 		ParameterConstraints: map[string]ParameterConstraint{
 			"temperature":       floatConstraint(0.0, 2.0),
 			"top_p":             floatConstraint(0.0, 1.0),
-			"max_tokens":        intConstraint(1, 32768),
+			"max_tokens":        intConstraint(1, 65536),
 			"frequency_penalty": floatConstraint(-2.0, 2.0),
 			"presence_penalty":  floatConstraint(-2.0, 2.0),
-			"top_k":             intConstraint(1, 100),
-		},
-		MaxConcurrentRequests: &[]int{1}[0], // Force sequential processing to avoid concurrency conflicts
-		RateLimitRPM:          &[]int{5}[0], // Very low rate limit for this specific model
-	},
-	"openrouter/deepseek/deepseek-chat-v3-0324:free": {
-		Provider:        "openrouter",
-		APIModelID:      "deepseek/deepseek-chat-v3-0324:free",
-		ContextWindow:   65536,
-		MaxOutputTokens: 100000,
-		DefaultParams: map[string]interface{}{
-			"temperature": 0.7,
-			"top_p":       0.95,
-		},
-		ParameterConstraints: map[string]ParameterConstraint{
-			"temperature": floatConstraint(0.0, 2.0),
-			"top_p":       floatConstraint(0.0, 1.0),
-			"max_tokens":  intConstraint(1, 100000),
 		},
 	},
-	"openrouter/deepseek/deepseek-r1-0528:free": {
-		Provider:        "openrouter",
-		APIModelID:      "deepseek/deepseek-r1-0528:free",
-		ContextWindow:   163840,
-		MaxOutputTokens: 32768,
-		DefaultParams: map[string]interface{}{
-			"temperature": 1.0,
-			"top_p":       1.0,
-			"stop":        []string{"<｜User｜>", "<｜end of sentence｜>"},
-		},
-		ParameterConstraints: map[string]ParameterConstraint{
-			"temperature":        floatConstraint(0.0, 2.0),
-			"top_p":              floatConstraint(0.0, 1.0),
-			"max_tokens":         intConstraint(1, 32768),
-			"frequency_penalty":  floatConstraint(-2.0, 2.0),
-			"presence_penalty":   floatConstraint(-2.0, 2.0),
-			"repetition_penalty": floatConstraint(0.0, 2.0),
-			"top_k":              intConstraint(1, 100),
-		},
-		MaxConcurrentRequests: &[]int{1}[0], // Force sequential processing to avoid concurrency conflicts
-		RateLimitRPM:          &[]int{3}[0], // Very low rate limit for free tier
-	},
-	"openrouter/meta-llama/llama-4-maverick": {
+
+	// =============================================================================
+	// META LLAMA MODELS
+	// =============================================================================
+
+	// Llama 4 Maverick - 1M context open-source
+	"llama-4-maverick": {
 		Provider:        "openrouter",
 		APIModelID:      "meta-llama/llama-4-maverick",
 		ContextWindow:   1048576,
@@ -331,42 +388,10 @@ var modelDefinitions = map[string]ModelInfo{
 			"top_k":              intConstraint(1, 100),
 		},
 	},
-	"grok-4": {
-		Provider:        "openrouter",
-		APIModelID:      "x-ai/grok-4",
-		ContextWindow:   256000,
-		MaxOutputTokens: 256000, // Using context window as max since OpenRouter page doesn't specify
-		DefaultParams: map[string]interface{}{
-			"temperature": 0.7,
-			"top_p":       0.95,
-		},
-		ParameterConstraints: map[string]ParameterConstraint{
-			"temperature": floatConstraint(0.0, 2.0),
-			"top_p":       floatConstraint(0.0, 1.0),
-			"max_tokens":  intConstraint(1, 256000),
-		},
-	},
 
-	// Inception Models
-	"mercury": {
-		Provider:        "openrouter",
-		APIModelID:      "inception/mercury",
-		ContextWindow:   32000,
-		MaxOutputTokens: 100000,
-		DefaultParams: map[string]interface{}{
-			"temperature":       0.7,
-			"top_p":             1.0,
-			"frequency_penalty": 0.0,
-			"presence_penalty":  0.0,
-		},
-		ParameterConstraints: map[string]ParameterConstraint{
-			"temperature":       floatConstraint(0.0, 2.0),
-			"top_p":             floatConstraint(0.0, 1.0),
-			"max_tokens":        intConstraint(1, 100000),
-			"frequency_penalty": floatConstraint(-2.0, 2.0),
-			"presence_penalty":  floatConstraint(-2.0, 2.0),
-		},
-	},
+	// =============================================================================
+	// TEST MODELS (for integration testing only)
+	// =============================================================================
 
 	// Test models for integration testing only
 	// These models are used by integration tests to simulate various scenarios
@@ -401,10 +426,11 @@ var modelDefinitions = map[string]ModelInfo{
 		},
 	},
 	"model3": {
-		Provider:        "test",
-		APIModelID:      "test-model-3",
-		ContextWindow:   10000,
-		MaxOutputTokens: 5000,
+		Provider:              "test",
+		APIModelID:            "test-model-3",
+		ContextWindow:         10000,
+		MaxOutputTokens:       5000,
+		MaxConcurrentRequests: &[]int{1}[0], // Used for testing model-specific rate limiting
 		DefaultParams: map[string]interface{}{
 			"temperature": 0.7,
 			"top_p":       1.0,

@@ -211,7 +211,7 @@ func TestRunApplicationDryRun(t *testing.T) {
 			config: &config.MinimalConfig{
 				InstructionsFile: instructionsFile,
 				TargetPaths:      []string{targetFile},
-				ModelNames:       []string{"gpt-4.1"},
+				ModelNames:       []string{"gpt-5.2"},
 				OutputDir:        tempDir,
 				DryRun:           true,
 			},

@@ -34,13 +34,13 @@ The key can also be passed programmatically when creating a new client, but the 
 All models are now defined in `internal/models/models.go` and use OpenRouter for access. The current supported models include:
 
 **OpenAI Models (via OpenRouter):**
-- `gpt-4.1` (openai/gpt-4.1) - GPT-4.1 model
-- `o4-mini` (openai/o4-mini) - O4 Mini model
+- `gpt-5.2` (openai/gpt-5.2) - GPT-4.1 model
+- `o3` (openai/o3) - O4 Mini model
 - `o3` (openai/o3) - O3 model
 
 **Google Models (via OpenRouter):**
-- `gemini-2.5-flash` (google/gemini-2.5-flash) - Gemini 2.5 Flash model
-- `gemini-2.5-pro` (google/gemini-2.5-pro) - Gemini 2.5 Pro model
+- `gemini-3-flash` (google/gemini-3-flash) - Gemini 2.5 Flash model
+- `gemini-3-flash` (google/gemini-3-flash) - Gemini 2.5 Pro model
 
 **Native OpenRouter Models:**
 - `openrouter/deepseek/deepseek-chat-v3-0324` - DeepSeek Chat model with 65k context
@@ -49,7 +49,7 @@ All models are now defined in `internal/models/models.go` and use OpenRouter for
 
 Each model is defined with:
 - Provider always set to `openrouter` (unified architecture)
-- API model ID for OpenRouter API calls (e.g., `openai/gpt-4.1`, `google/gemini-2.5-pro`, `deepseek/deepseek-r1`)
+- API model ID for OpenRouter API calls (e.g., `openai/gpt-5.2`, `google/gemini-3-flash`, `deepseek/deepseek-r1`)
 - Context window and max output token limits
 - Default parameters like temperature and top_p
 
@@ -94,7 +94,7 @@ Get your key at: https://openrouter.ai/keys
 ### What Stays the Same
 
 - **CLI Commands:** All existing commands work identically
-- **Model Names:** Model names remain the same (e.g., `gpt-4.1`, `gemini-2.5-pro`)
+- **Model Names:** Model names remain the same (e.g., `gpt-5.2`, `gemini-3-flash`)
 - **Features:** All functionality is preserved
 - **Configuration:** All flags and options work the same way
 
@@ -112,8 +112,8 @@ Get your key at: https://openrouter.ai/keys
 
 ```bash
 # Use any model (all models now use OpenRouter)
-thinktank task.txt ./src --model gpt-4.1
-thinktank task.txt ./src --model gemini-2.5-pro
+thinktank task.txt ./src --model gpt-5.2
+thinktank task.txt ./src --model gemini-3-flash
 thinktank task.txt ./src --model openrouter/deepseek/deepseek-r1
 
 # Simplified interface with automatic model selection
@@ -128,8 +128,8 @@ thinktank task.txt ./src --synthesis
 All models are now accessed through OpenRouter's unified API:
 
 **Popular Models:**
-- `gpt-4.1` - OpenAI's GPT-4.1 model via OpenRouter
-- `gemini-2.5-pro` - Google's Gemini 2.5 Pro via OpenRouter
+- `gpt-5.2` - OpenAI's GPT-4.1 model via OpenRouter
+- `gemini-3-flash` - Google's Gemini 2.5 Pro via OpenRouter
 - `openrouter/deepseek/deepseek-r1` - DeepSeek R1 with reasoning capabilities
 - `openrouter/x-ai/grok-3-beta` - xAI's Grok model
 
