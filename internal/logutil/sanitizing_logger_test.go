@@ -116,35 +116,35 @@ func TestSanitizingLogger(t *testing.T) {
 		{
 			name: "Info with API key",
 			logFunc: func(msg string) {
-				logger.Info(msg)
+				logger.Info("%s", msg)
 			},
 			logMessage: "API key is sk-1234567890abcdef1234567890abcdef1234567890abcdef",
 		},
 		{
 			name: "Error with Bearer token",
 			logFunc: func(msg string) {
-				logger.Error(msg)
+				logger.Error("%s", msg)
 			},
 			logMessage: "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ",
 		},
 		{
 			name: "Debug with URL credentials",
 			logFunc: func(msg string) {
-				logger.Debug(msg)
+				logger.Debug("%s", msg)
 			},
 			logMessage: "Connection string: https://username:password@example.com",
 		},
 		{
 			name: "Warn with password",
 			logFunc: func(msg string) {
-				logger.Warn(msg)
+				logger.Warn("%s", msg)
 			},
 			logMessage: "Password for app is 'supersecretpassword123'",
 		},
 		{
 			name: "InfoContext with API key",
 			logFunc: func(msg string) {
-				logger.InfoContext(ctx, msg)
+				logger.InfoContext(ctx, "%s", msg)
 			},
 			logMessage: "API key is sk-1234567890abcdef1234567890abcdef1234567890abcdef",
 		},

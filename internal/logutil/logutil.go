@@ -416,7 +416,7 @@ func (l *Logger) GetLevel() LogLevel {
 
 // Println implements LoggerInterface by logging at info level
 func (l *Logger) Println(v ...interface{}) {
-	l.Info(fmt.Sprintln(v...))
+	l.Info("%s", fmt.Sprintln(v...))
 }
 
 // Printf implements LoggerInterface by logging at info level

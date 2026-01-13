@@ -106,7 +106,7 @@ func (l *TestLogger) Fatal(format string, args ...interface{}) {
 
 // Println implements LoggerInterface by logging at info level
 func (l *TestLogger) Println(v ...interface{}) {
-	l.Info(fmt.Sprintln(v...))
+	l.Info("%s", fmt.Sprintln(v...))
 }
 
 // Printf implements LoggerInterface by logging at info level

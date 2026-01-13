@@ -38,7 +38,7 @@ func TestErrorHandlingForPartialFailures(t *testing.T) {
 			mockLogger.errorMessages = nil
 
 			// Create an error with the test case message
-			err := fmt.Errorf(tc.errorMessage)
+			err := fmt.Errorf("%s", tc.errorMessage)
 
 			// Call the same error logging pattern used in main.go
 			mockLogger.Error("Application failed: %v", err)
