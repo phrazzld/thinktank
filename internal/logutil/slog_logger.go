@@ -373,7 +373,7 @@ func isAttr(arg interface{}) bool {
 func (s *SlogLogger) Println(v ...interface{}) {
 	message := fmt.Sprintln(v...)
 	// Use InfoContext with the logger's context to ensure correlation ID is included
-	s.InfoContext(s.ctx, message)
+	s.InfoContext(s.ctx, "%s", message)
 }
 
 // Printf implements the standard logger interface, logs at INFO level

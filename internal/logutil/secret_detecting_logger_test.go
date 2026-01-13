@@ -80,13 +80,13 @@ func TestSecretDetectingLogger(t *testing.T) {
 			// Log the message at the appropriate level
 			switch tc.level {
 			case "Debug":
-				secretLogger.Debug(tc.message)
+				secretLogger.Debug("%s", tc.message)
 			case "Info":
-				secretLogger.Info(tc.message)
+				secretLogger.Info("%s", tc.message)
 			case "Warn":
-				secretLogger.Warn(tc.message)
+				secretLogger.Warn("%s", tc.message)
 			case "Error":
-				secretLogger.Error(tc.message)
+				secretLogger.Error("%s", tc.message)
 			}
 
 			// Check if the message was correctly detected as containing a secret
