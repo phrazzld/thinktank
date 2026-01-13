@@ -269,7 +269,9 @@ func (m *MockInputSizeAwareTokenCounter) GetEncoding(modelName string) (string, 
 // calculateMemoryTarget returns CI-aware memory targets for tokenizer initialization
 func calculateMemoryTarget() int64 {
 	// Base target for local development - tiktoken o200k vocabulary is substantial
-	baseTarget := int64(120 * 1024 * 1024) // 120MB
+	// Increased from 120MB to 150MB to accommodate tiktoken vocabulary growth
+	// and platform-specific memory overhead (Go 1.24.11, Apple Silicon, etc.)
+	baseTarget := int64(150 * 1024 * 1024) // 150MB
 
 	// CI environments often have different memory characteristics
 	if os.Getenv("CI") != "" {
