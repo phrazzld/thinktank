@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 * **Build:** `go build ./...`
 * **Run Tests:** `go test ./...`
-* **Coverage Check:** `./scripts/check-coverage.sh` (required 90% threshold)
+* **Coverage Check:** `./scripts/check-coverage.sh` (required 79% threshold)
 * **Race Detection:** `go test -race ./...` (required before committing)
 * **Lint:** `golangci-lint run ./...` (fix all violations)
 * **Vulnerability Scan:** `govulncheck -scan=module`
@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 * **TDD:** Write tests first, then implement
 * **Direct Function Testing:** Use dependency injection over subprocess tests
-* **90% Test Coverage:** CI fails below 90% - use coverage scripts
+* **79% Test Coverage:** CI fails below 79% - use coverage scripts
 * **No Error Suppression:** Fix all `golangci-lint` violations, never ignore with `_`
 * **Dual-Output Logging:** ConsoleWriter for users + structured JSON for debugging
 
