@@ -14,17 +14,23 @@ jobs:
         cache: true
 
     - name: Verify formatting
-      run: |
-        go fmt ./...
-        test -z "$(git diff --name-only)" || (echo "❌ Files need formatting. Run 'go fmt ./...'" && exit 1)
+      run: test -z "$(gofmt -l .)" || (gofmt -l . && echo "❌ Run 'go fmt ./...'" && exit 1)
 
     - name: Lint
-      run: go vet ./...
+      uses: golangci/golangci-lint-action@v4
+      with:
+        version: v1.64.6
 
-    - name: Test
+    - name: Test with coverage
       env:
         OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      run: go test -race -short -timeout 5m ./...
+      run: go test -race -short -timeout 5m -coverprofile=coverage.out ./...
+
+    - name: Check coverage threshold
+      run: |
+        COVERAGE=$(go tool cover -func=coverage.out | awk '/total:/ {gsub(/%/,""); print int($3)}')
+        echo "Coverage: ${COVERAGE}%"
+        [ "$COVERAGE" -ge 79 ] || (echo "❌ Below 79% threshold" && exit 1)
 
     - name: Build
       run: go build -v ./cmd/thinktank
@@ -37,7 +43,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Run Trivy security scan
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@0.33.1
       with:
         scan-type: 'fs'
         scan-ref: '.'
