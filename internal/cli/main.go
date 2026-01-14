@@ -20,6 +20,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/ratelimit"
 	"github.com/phrazzld/thinktank/internal/thinktank"
 	"github.com/phrazzld/thinktank/internal/thinktank/orchestrator"
+	"github.com/phrazzld/thinktank/internal/version"
 )
 
 // Variable to allow mocking os.Exit in tests
@@ -42,6 +43,12 @@ const (
 
 // Main is the entry point for the thinktank CLI
 func Main() {
+	// Handle --version early (meta-command, doesn't need full parsing)
+	if isVersionRequested(os.Args) {
+		fmt.Println(version.String())
+		osExit(ExitCodeSuccess)
+	}
+
 	// Parse simplified arguments directly
 	simplifiedConfig, err := ParseSimpleArgs()
 	if err != nil {
@@ -705,6 +712,17 @@ func selectModelsForConfigWithService(simplifiedConfig *SimplifiedConfig, tokenS
 	}
 
 	return selectedModels, synthesisModel
+}
+
+// isVersionRequested checks if --version or -V flag is present in args.
+// This is checked before full argument parsing since version is a meta-command.
+func isVersionRequested(args []string) bool {
+	for _, arg := range args {
+		if arg == "--version" || arg == "-V" {
+			return true
+		}
+	}
+	return false
 }
 
 // getUserMessage returns a user-friendly error message

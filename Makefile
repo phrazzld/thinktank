@@ -14,6 +14,15 @@ PROJECT_ROOT := $(shell pwd)
 GOPATH := $(shell go env GOPATH)
 GOLANGCI_LINT_VERSION := v2.1.1
 
+# Version information (can be overridden: make build VERSION=v1.2.3)
+VERSION ?= dev
+COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+LDFLAGS := -s -w \
+	-X github.com/phrazzld/thinktank/internal/version.Version=$(VERSION) \
+	-X github.com/phrazzld/thinktank/internal/version.Commit=$(COMMIT) \
+	-X github.com/phrazzld/thinktank/internal/version.BuildDate=$(BUILD_DATE)
+
 .PHONY: help
 help: ## Show this help message
 	@echo "$(CYAN)Thinktank Development Makefile$(NC)"
@@ -107,7 +116,8 @@ coverage: ## Check test coverage (90% threshold)
 .PHONY: build
 build: ## Build the thinktank binary
 	@echo "$(BLUE)🔨 Building thinktank binary...$(NC)"
-	@go build -v -ldflags="-s -w" -o thinktank ./cmd/thinktank
+	@echo "  Version: $(VERSION), Commit: $(COMMIT)"
+	@go build -v -ldflags="$(LDFLAGS)" -o thinktank ./cmd/thinktank
 	@echo "$(GREEN)✅ Build completed: ./thinktank$(NC)"
 
 .PHONY: fmt
