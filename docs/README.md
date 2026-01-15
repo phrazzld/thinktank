@@ -4,6 +4,7 @@ This directory contains project documentation organized by topic.
 
 ## Directory Structure
 
+- **`adr/`** - Architecture Decision Records
 - **`analysis/`** - Code analysis and audit reports
 - **`coverage/`** - Test coverage analysis and strategies
 - **`operations/`** - Performance, quality gates, and operational docs
@@ -24,6 +25,7 @@ This directory contains project documentation organized by topic.
 - **`MODERN_CLI_OUTPUT.md`** - CLI output format documentation
 - **`STRUCTURED_LOGGING.md`** - Logging architecture
 - **`simple-parser-design.md`** - CLI parser design philosophy
+- **`execution-flow.md`** - Execution flow diagrams (Mermaid)
 - **`e2e-tests-in-ci.md`** - End-to-end testing in CI
 
 ## Organization Principles
