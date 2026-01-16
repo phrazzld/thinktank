@@ -6,19 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 	"unicode"
-)
-
-// Package-level caches for git operations.
-// Keys: normalized paths via filepath.Clean (or filepath.Join for ignore cache)
-// Values: bool results from git subprocess calls
-// Lifetime: process lifetime, reset via ClearGitCaches() for test isolation
-// Size: O(unique directories) - bounded by filesystem depth
-// Thread-safety: sync.Map provides concurrent read/write access
-var (
-	gitRepoCache   sync.Map // dir path -> isRepo
-	gitIgnoreCache sync.Map // dir/filename -> isIgnored
 )
 
 // FileFilterResult represents the result of file filtering operations
@@ -456,37 +444,4 @@ func CheckGitIgnore(dir, filename string) (bool, error) {
 		return false, nil // Exit code 1: file is NOT ignored
 	}
 	return false, err // Other error
-}
-
-// CheckGitRepoCached checks if a directory is inside a git repository, with caching.
-// Uses filepath.Clean for cache key normalization to handle path variations.
-func CheckGitRepoCached(dir string) bool {
-	key := filepath.Clean(dir)
-	if cached, ok := gitRepoCache.Load(key); ok {
-		return cached.(bool)
-	}
-	result := CheckGitRepo(dir)
-	gitRepoCache.Store(key, result)
-	return result
-}
-
-// CheckGitIgnoreCached checks if a file is ignored by git, with caching.
-// Cache key combines normalized directory path and filename.
-func CheckGitIgnoreCached(dir, filename string) (bool, error) {
-	key := filepath.Join(filepath.Clean(dir), filename)
-	if cached, ok := gitIgnoreCache.Load(key); ok {
-		return cached.(bool), nil
-	}
-	isIgnored, err := CheckGitIgnore(dir, filename)
-	if err != nil {
-		return false, err
-	}
-	gitIgnoreCache.Store(key, isIgnored)
-	return isIgnored, nil
-}
-
-// ClearGitCaches resets the git caches. Used for testing isolation.
-func ClearGitCaches() {
-	gitRepoCache = sync.Map{}
-	gitIgnoreCache = sync.Map{}
 }

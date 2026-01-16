@@ -680,19 +680,14 @@ func TestIOOperations(t *testing.T) {
 	})
 }
 
-// TestGitCaching tests the git operation caching functions
-func TestGitCaching(t *testing.T) {
-	// Clear caches before each test
-	ClearGitCaches()
-
+// TestGitCachingLegacy tests the deprecated git caching functions for backward compatibility.
+// Comprehensive GitChecker tests are in git_checker_test.go.
+func TestGitCachingLegacy(t *testing.T) {
 	t.Run("CheckGitRepoCached returns consistent results", func(t *testing.T) {
 		ClearGitCaches()
-
 		tempDir := t.TempDir()
 
-		// First call should hit uncached path
 		result1 := CheckGitRepoCached(tempDir)
-		// Second call should hit cache
 		result2 := CheckGitRepoCached(tempDir)
 
 		if result1 != result2 {
@@ -700,82 +695,32 @@ func TestGitCaching(t *testing.T) {
 		}
 	})
 
-	t.Run("CheckGitRepoCached normalizes paths", func(t *testing.T) {
+	t.Run("CheckGitIgnoreCached returns false for non-git directory", func(t *testing.T) {
 		ClearGitCaches()
-
 		tempDir := t.TempDir()
-		// Create two equivalent paths with different formatting
-		path1 := tempDir
-		path2 := tempDir + "/."
 
-		result1 := CheckGitRepoCached(path1)
-		result2 := CheckGitRepoCached(path2)
+		// Non-git directory: should return (false, nil), not an error
+		// because GitChecker.IsIgnored checks IsRepo first
+		isIgnored, err := CheckGitIgnoreCached(tempDir, "test.txt")
 
-		// Both should return same result (cache hit on normalized key)
-		if result1 != result2 {
-			t.Errorf("Path normalization failed: %v vs %v", result1, result2)
+		if err != nil {
+			t.Errorf("Unexpected error for non-git directory: %v", err)
+		}
+		if isIgnored {
+			t.Error("Should return false for non-git directory")
 		}
 	})
 
-	t.Run("CheckGitIgnoreCached handles errors", func(t *testing.T) {
-		ClearGitCaches()
-
-		tempDir := t.TempDir()
-
-		// First call - should return error for non-git dir
-		_, err1 := CheckGitIgnoreCached(tempDir, "test.txt")
-		if err1 == nil {
-			t.Error("Expected error for non-git directory")
-		}
-
-		// Error results should not be cached, so second call should also return error
-		_, err2 := CheckGitIgnoreCached(tempDir, "test.txt")
-		if err2 == nil {
-			t.Error("Expected error on second call too")
-		}
-	})
-
-	t.Run("ClearGitCaches resets state", func(t *testing.T) {
+	t.Run("ClearGitCaches resets DefaultGitChecker", func(t *testing.T) {
 		tempDir := t.TempDir()
 
 		// Populate cache
 		_ = CheckGitRepoCached(tempDir)
 
-		// Clear and verify it works without panic
+		// Clear
 		ClearGitCaches()
 
-		// Should work again after clear
+		// Should work without panic after clear
 		_ = CheckGitRepoCached(tempDir)
-	})
-
-	t.Run("CheckGitIgnoreCached caches successful results", func(t *testing.T) {
-		ClearGitCaches()
-
-		// Use current directory which should be a git repo
-		currentDir, err := os.Getwd()
-		if err != nil {
-			t.Skip("Could not get current directory")
-		}
-
-		// Only test if we're in a git repo
-		if !CheckGitRepoCached(currentDir) {
-			t.Skip("Not in a git repo, skipping cache test")
-		}
-
-		// First call
-		result1, err1 := CheckGitIgnoreCached(currentDir, "go.mod")
-		if err1 != nil {
-			t.Skipf("git check-ignore failed: %v", err1)
-		}
-
-		// Second call should hit cache
-		result2, err2 := CheckGitIgnoreCached(currentDir, "go.mod")
-		if err2 != nil {
-			t.Errorf("Second call failed: %v", err2)
-		}
-
-		if result1 != result2 {
-			t.Errorf("Cache returned inconsistent results: %v vs %v", result1, result2)
-		}
 	})
 }

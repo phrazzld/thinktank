@@ -214,10 +214,11 @@ exit /b 2
 	})
 	_ = os.Setenv("PATH", tempDir+string(filepath.ListSeparator)+origPath)
 
-	// Create a config with git available
+	// Create a config with git available and GitChecker
 	config := &Config{
 		Logger:       logger,
 		GitAvailable: true,
+		GitChecker:   NewGitChecker(),
 	}
 
 	// Test cases
@@ -360,10 +361,11 @@ exit /b 2
 	})
 	_ = os.Setenv("PATH", tempDir+string(filepath.ListSeparator)+origPath)
 
-	// Create a config with git available
+	// Create a config with git available and GitChecker
 	config := &Config{
 		Logger:       logger,
 		GitAvailable: true,
+		GitChecker:   NewGitChecker(),
 	}
 
 	// Test cases for error handling

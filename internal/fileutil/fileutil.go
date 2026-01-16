@@ -29,6 +29,7 @@ type Config struct {
 	Format         string
 	Logger         logutil.LoggerInterface
 	GitAvailable   bool
+	GitChecker     *GitChecker // Cached git operations (created automatically if nil)
 	processedFiles int
 	totalFiles     int               // For verbose logging
 	fileCollector  func(path string) // Optional callback to collect processed file paths
@@ -50,6 +51,7 @@ func NewConfig(verbose bool, include, exclude, excludeNames, format string, logg
 		Format:       format,
 		Logger:       logger,
 		GitAvailable: gitAvailable,
+		GitChecker:   NewGitChecker(),
 	}
 
 	// Process include/exclude extensions
@@ -99,16 +101,14 @@ func isGitIgnored(path string, config *Config) bool {
 	}
 
 	// Check git ignore status if git is available
-	if config.GitAvailable {
+	if config.GitAvailable && config.GitChecker != nil {
 		dir := filepath.Dir(path)
-		if CheckGitRepoCached(dir) {
-			isIgnored, err := CheckGitIgnoreCached(dir, base)
-			if err != nil {
-				config.Logger.Printf("Verbose: Error running git check-ignore for %s: %v. Falling back.\n", path, err)
-			} else if isIgnored {
-				config.Logger.Printf("Verbose: Git ignored: %s\n", path)
-				return true
-			}
+		isIgnored, err := config.GitChecker.IsIgnored(dir, base)
+		if err != nil {
+			config.Logger.Printf("Verbose: Error running git check-ignore for %s: %v. Falling back.\n", path, err)
+		} else if isIgnored {
+			config.Logger.Printf("Verbose: Git ignored: %s\n", path)
+			return true
 		}
 	}
 
