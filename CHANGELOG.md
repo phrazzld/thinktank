@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.2.0](https://github.com/phrazzld/thinktank/compare/v2.1.0...v2.2.0) (2026-01-16)
+
+
+### Features
+
+* **models:** expand core council from 5 to 8 models ([638168e](https://github.com/phrazzld/thinktank/commit/638168e92173f397a87157e795881f63663f4bbb))
+
+
+### Performance Improvements
+
+* cache git repo detection to reduce subprocess overhead ([#159](https://github.com/phrazzld/thinktank/issues/159)) ([865376a](https://github.com/phrazzld/thinktank/commit/865376a3c1669c0964d170426805d037388bbaf0))
+
 ## [2.1.0](https://github.com/phrazzld/thinktank/compare/v2.0.0...v2.1.0) (2026-01-16)
 
 
