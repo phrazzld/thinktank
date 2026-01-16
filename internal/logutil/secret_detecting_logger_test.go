@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"strings"
 	"testing"
 )
 
@@ -324,7 +323,7 @@ func TestDefaultSecretPatterns(t *testing.T) {
 // Helper function to check if a slice contains a string
 func contains(slice []string, item string) bool {
 	for _, s := range slice {
-		if strings.Compare(s, item) == 0 {
+		if s == item {
 			return true
 		}
 	}
