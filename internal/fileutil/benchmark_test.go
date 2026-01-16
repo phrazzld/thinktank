@@ -1,6 +1,7 @@
 package fileutil
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -92,6 +93,37 @@ func BenchmarkShouldProcess(b *testing.B) {
 			})
 		})
 	}
+}
+
+// BenchmarkGitRepoCaching benchmarks cached vs uncached git repo detection
+func BenchmarkGitRepoCaching(b *testing.B) {
+	// Use current directory (likely a git repo)
+	currentDir, err := os.Getwd()
+	if err != nil {
+		b.Skip("Could not get current directory")
+	}
+
+	b.Run("Uncached", func(b *testing.B) {
+		perftest.RunBenchmark(b, "CheckGitRepo_Uncached", func(b *testing.B) {
+			perftest.ReportAllocs(b)
+			for i := 0; i < b.N; i++ {
+				_ = CheckGitRepo(currentDir)
+			}
+		})
+	})
+
+	b.Run("Cached", func(b *testing.B) {
+		ClearGitCaches()
+		// Prime the cache with one call
+		_ = CheckGitRepoCached(currentDir)
+
+		perftest.RunBenchmark(b, "CheckGitRepoCached", func(b *testing.B) {
+			perftest.ReportAllocs(b)
+			for i := 0; i < b.N; i++ {
+				_ = CheckGitRepoCached(currentDir)
+			}
+		})
+	})
 }
 
 // BenchmarkIsBinaryFile benchmarks the isBinaryFile function

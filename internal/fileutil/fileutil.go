@@ -97,12 +97,12 @@ func isGitIgnored(path string, config *Config) bool {
 		return true
 	}
 
-	// Use git check-ignore if available
+	// Use git check-ignore if available (with caching)
 	if config.GitAvailable {
 		dir := filepath.Dir(path)
-		// Check if the directory is actually a git repo first
-		if CheckGitRepo(dir) { // If it is a git repo
-			isIgnored, err := CheckGitIgnore(dir, base)
+		// Check if the directory is actually a git repo first (cached)
+		if CheckGitRepoCached(dir) { // If it is a git repo
+			isIgnored, err := CheckGitIgnoreCached(dir, base)
 			if err == nil {
 				if isIgnored {
 					config.Logger.Printf("Verbose: Git ignored: %s\n", path)
