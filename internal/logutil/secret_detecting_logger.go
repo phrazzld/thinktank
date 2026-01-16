@@ -43,7 +43,7 @@ var DefaultSecretPatterns = []SecretPattern{
 	},
 	{
 		Name:        "OpenRouter API Key",
-		Regex:       regexp.MustCompile(`sk-or-[0-9a-zA-Z_-]{20,}`),
+		Regex:       regexp.MustCompile(`sk-or-[0-9a-zA-Z_-]{8,}`),
 		Description: "Detected text matching OpenRouter API key format",
 	},
 	{
