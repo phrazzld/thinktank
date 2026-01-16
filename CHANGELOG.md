@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/phrazzld/thinktank/compare/v2.0.0...v2.1.0) (2026-01-16)
+
+
+### Features
+
+* **security:** add OpenRouter API key pattern to secret detection ([#156](https://github.com/phrazzld/thinktank/issues/156)) ([79faad8](https://github.com/phrazzld/thinktank/commit/79faad8109bdd75b78eef50fb229ca75524eb8f7))
+
 ## [2.0.0](https://github.com/phrazzld/thinktank/compare/v1.0.0...v2.0.0) (2026-01-14)
 
 
