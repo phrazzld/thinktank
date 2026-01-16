@@ -158,13 +158,14 @@ func TestIsGitIgnoredWithMockGit(t *testing.T) {
 	}
 
 	// Create a bash script that simulates git behavior
+	// Note: git check-ignore now uses "--" separator, so filename is $6
 	mockGitScript := `#!/bin/sh
 if [ "$1" = "-C" ] && [ "$3" = "rev-parse" ] && [ "$4" = "--is-inside-work-tree" ]; then
   # Simulate being in a git repo
   exit 0
-elif [ "$1" = "-C" ] && [ "$3" = "check-ignore" ] && [ "$4" = "-q" ]; then
-  # Check if the file should be ignored
-  filename="$5"
+elif [ "$1" = "-C" ] && [ "$3" = "check-ignore" ] && [ "$4" = "-q" ] && [ "$5" = "--" ]; then
+  # Check if the file should be ignored (filename is after "--")
+  filename="$6"
 
   # Files to ignore
   if [ "$filename" = "ignored.txt" ] || [ "$filename" = "build.log" ] || [ "$filename" = "node_modules" ]; then
@@ -179,6 +180,7 @@ fi
 `
 
 	// For Windows, create a batch script instead
+	// Note: git check-ignore now uses "--" separator, so filename is %6
 	if isWindows() {
 		mockGitScript = `@echo off
 if "%1"=="-C" (
@@ -189,11 +191,13 @@ if "%1"=="-C" (
   )
   if "%3"=="check-ignore" (
     if "%4"=="-q" (
-      set filename=%5
-      if "%filename%"=="ignored.txt" exit /b 0
-      if "%filename%"=="build.log" exit /b 0
-      if "%filename%"=="node_modules" exit /b 0
-      exit /b 1
+      if "%5"=="--" (
+        set filename=%6
+        if "%filename%"=="ignored.txt" exit /b 0
+        if "%filename%"=="build.log" exit /b 0
+        if "%filename%"=="node_modules" exit /b 0
+        exit /b 1
+      )
     )
   )
 )
@@ -291,6 +295,7 @@ func TestGitErrorHandling(t *testing.T) {
 	}
 
 	// Create a bash script that simulates different git error scenarios
+	// Note: git check-ignore now uses "--" separator, so filename is $6
 	mockGitScript := `#!/bin/sh
 if [ "$1" = "-C" ] && [ "$3" = "rev-parse" ] && [ "$4" = "--is-inside-work-tree" ]; then
   # Simulate not being in a git repo
@@ -299,13 +304,13 @@ if [ "$1" = "-C" ] && [ "$3" = "rev-parse" ] && [ "$4" = "--is-inside-work-tree"
   else
     exit 0  # Is a git repo
   fi
-elif [ "$1" = "-C" ] && [ "$3" = "check-ignore" ] && [ "$4" = "-q" ]; then
-  # Simulate various check-ignore errors
+elif [ "$1" = "-C" ] && [ "$3" = "check-ignore" ] && [ "$4" = "-q" ] && [ "$5" = "--" ]; then
+  # Simulate various check-ignore errors (filename is after "--")
   if [ "$2" = "error-repo" ]; then
     exit 128  # Fatal error
-  elif [ "$5" = "error-file.txt" ]; then
+  elif [ "$6" = "error-file.txt" ]; then
     exit 2    # Other error code
-  elif [ "$5" = "ignored.txt" ]; then
+  elif [ "$6" = "ignored.txt" ]; then
     exit 0    # File is ignored
   else
     exit 1    # File is not ignored
@@ -317,6 +322,7 @@ fi
 `
 
 	// For Windows, create a batch script instead
+	// Note: git check-ignore now uses "--" separator, so filename is %6
 	if isWindows() {
 		mockGitScript = `@echo off
 if "%1"=="-C" (
@@ -331,16 +337,18 @@ if "%1"=="-C" (
   )
   if "%3"=="check-ignore" (
     if "%4"=="-q" (
-      if "%2"=="error-repo" (
-        exit /b 128
+      if "%5"=="--" (
+        if "%2"=="error-repo" (
+          exit /b 128
+        )
+        if "%6"=="error-file.txt" (
+          exit /b 2
+        )
+        if "%6"=="ignored.txt" (
+          exit /b 0
+        )
+        exit /b 1
       )
-      if "%5"=="error-file.txt" (
-        exit /b 2
-      )
-      if "%5"=="ignored.txt" (
-        exit /b 0
-      )
-      exit /b 1
     )
   )
 )

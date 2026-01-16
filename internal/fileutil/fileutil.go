@@ -101,7 +101,11 @@ func isGitIgnored(path string, config *Config) bool {
 	}
 
 	// Check git ignore status if git is available
-	if config.GitAvailable && config.GitChecker != nil {
+	if config.GitAvailable {
+		// Lazy init GitChecker if not set (preserves behavior for manual Config creation)
+		if config.GitChecker == nil {
+			config.GitChecker = NewGitChecker()
+		}
 		dir := filepath.Dir(path)
 		isIgnored, err := config.GitChecker.IsIgnored(dir, base)
 		if err != nil {

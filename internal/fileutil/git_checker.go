@@ -109,7 +109,8 @@ func checkGitRepoUncached(dir string) bool {
 // Returns (true, nil) if ignored, (false, nil) if not ignored,
 // and (false, error) for unexpected failures.
 func checkGitIgnoreUncached(dir, filename string) (bool, error) {
-	cmd := exec.Command("git", "-C", dir, "check-ignore", "-q", filename)
+	// Use "--" separator to prevent filenames starting with "-" from being parsed as options
+	cmd := exec.Command("git", "-C", dir, "check-ignore", "-q", "--", filename)
 	err := cmd.Run()
 	if err == nil {
 		return true, nil // Exit code 0: file IS ignored
@@ -149,8 +150,10 @@ func CheckGitIgnoreCached(dir, filename string) (bool, error) {
 //
 // Deprecated: Use NewGitChecker() per test instead - each instance has its own cache.
 func ClearGitCaches() {
-	// Create a new GitChecker to replace the old one.
-	// This is safe because sync.Map assignment is atomic for pointers,
-	// and ongoing operations on the old map will complete safely.
-	DefaultGitChecker = NewGitChecker()
+	// Clear the cache in-place to avoid racing on pointer swaps.
+	// Range+Delete is safe for concurrent access with sync.Map.
+	DefaultGitChecker.repoCache.Range(func(k, _ any) bool {
+		DefaultGitChecker.repoCache.Delete(k)
+		return true
+	})
 }
