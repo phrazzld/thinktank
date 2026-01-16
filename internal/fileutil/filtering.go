@@ -466,9 +466,9 @@ func CheckGitRepoCached(dir string) bool {
 }
 
 // CheckGitIgnoreCached checks if a file is ignored by git, with caching.
-// Cache key is normalized dir + "/" + filename.
+// Cache key combines normalized directory path and filename.
 func CheckGitIgnoreCached(dir, filename string) (bool, error) {
-	key := filepath.Clean(dir) + "/" + filename
+	key := filepath.Join(filepath.Clean(dir), filename)
 	if cached, ok := gitIgnoreCache.Load(key); ok {
 		return cached.(bool), nil
 	}

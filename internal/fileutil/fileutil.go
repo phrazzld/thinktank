@@ -92,36 +92,32 @@ func (c *Config) SetFileCollector(collector func(path string)) {
 // isGitIgnored checks if a file is likely ignored by git or is hidden.
 func isGitIgnored(path string, config *Config) bool {
 	base := filepath.Base(path)
-	// Always ignore .git directory contents implicitly
+
+	// Always ignore .git directory contents
 	if base == ".git" || strings.Contains(path, string(filepath.Separator)+".git"+string(filepath.Separator)) {
 		return true
 	}
 
-	// Use git check-ignore if available (with caching)
+	// Check git ignore status if git is available
 	if config.GitAvailable {
 		dir := filepath.Dir(path)
-		// Check if the directory is actually a git repo first (cached)
-		if CheckGitRepoCached(dir) { // If it is a git repo
+		if CheckGitRepoCached(dir) {
 			isIgnored, err := CheckGitIgnoreCached(dir, base)
-			if err == nil {
-				if isIgnored {
-					config.Logger.Printf("Verbose: Git ignored: %s\n", path)
-					return true
-				}
-				// File is not ignored, continue to other checks like hidden files
-			} else {
-				// Other errors running check-ignore, log it but fall back
+			if err != nil {
 				config.Logger.Printf("Verbose: Error running git check-ignore for %s: %v. Falling back.\n", path, err)
+			} else if isIgnored {
+				config.Logger.Printf("Verbose: Git ignored: %s\n", path)
+				return true
 			}
 		}
-		// If not a git repo or check-ignore failed non-fatally, proceed to hidden check
 	}
 
-	// Fallback or additional check: Check if the file/directory itself is hidden
+	// Check if hidden file/directory (starts with dot)
 	if strings.HasPrefix(base, ".") && base != "." && base != ".." {
 		config.Logger.Printf("Verbose: Hidden file/dir ignored: %s\n", path)
 		return true
 	}
+
 	return false
 }
 
