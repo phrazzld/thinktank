@@ -279,6 +279,11 @@ func TestDefaultSecretPatterns(t *testing.T) {
 			shouldMatch: []string{"OpenAI API Key"},
 		},
 		{
+			name:        "OpenRouter API Key",
+			message:     "OpenRouter: sk-or-v1_test1234567890abcdefghijklmnopqrstuvwxyz",
+			shouldMatch: []string{"OpenRouter API Key"},
+		},
+		{
 			name:        "Google API Key",
 			message:     "Google key: AIzaSyC6MkjIAB-fJvnuvTqOTvWHP9xxxx_xxxxx",
 			shouldMatch: []string{"Google API Key"},
