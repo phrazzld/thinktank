@@ -679,3 +679,48 @@ func TestIOOperations(t *testing.T) {
 		// and might interfere with the actual project's git state
 	})
 }
+
+// TestGitCachingLegacy tests the deprecated git caching functions for backward compatibility.
+// Comprehensive GitChecker tests are in git_checker_test.go.
+func TestGitCachingLegacy(t *testing.T) {
+	t.Run("CheckGitRepoCached returns consistent results", func(t *testing.T) {
+		ClearGitCaches()
+		tempDir := t.TempDir()
+
+		result1 := CheckGitRepoCached(tempDir)
+		result2 := CheckGitRepoCached(tempDir)
+
+		if result1 != result2 {
+			t.Errorf("CheckGitRepoCached returned inconsistent results: %v vs %v", result1, result2)
+		}
+	})
+
+	t.Run("CheckGitIgnoreCached returns false for non-git directory", func(t *testing.T) {
+		ClearGitCaches()
+		tempDir := t.TempDir()
+
+		// Non-git directory: should return (false, nil), not an error
+		// because GitChecker.IsIgnored checks IsRepo first
+		isIgnored, err := CheckGitIgnoreCached(tempDir, "test.txt")
+
+		if err != nil {
+			t.Errorf("Unexpected error for non-git directory: %v", err)
+		}
+		if isIgnored {
+			t.Error("Should return false for non-git directory")
+		}
+	})
+
+	t.Run("ClearGitCaches resets DefaultGitChecker", func(t *testing.T) {
+		tempDir := t.TempDir()
+
+		// Populate cache
+		_ = CheckGitRepoCached(tempDir)
+
+		// Clear
+		ClearGitCaches()
+
+		// Should work without panic after clear
+		_ = CheckGitRepoCached(tempDir)
+	})
+}

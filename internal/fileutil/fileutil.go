@@ -29,6 +29,7 @@ type Config struct {
 	Format         string
 	Logger         logutil.LoggerInterface
 	GitAvailable   bool
+	GitChecker     *GitChecker // Cached git operations (created automatically if nil)
 	processedFiles int
 	totalFiles     int               // For verbose logging
 	fileCollector  func(path string) // Optional callback to collect processed file paths
@@ -50,6 +51,7 @@ func NewConfig(verbose bool, include, exclude, excludeNames, format string, logg
 		Format:       format,
 		Logger:       logger,
 		GitAvailable: gitAvailable,
+		GitChecker:   NewGitChecker(),
 	}
 
 	// Process include/exclude extensions
@@ -92,36 +94,34 @@ func (c *Config) SetFileCollector(collector func(path string)) {
 // isGitIgnored checks if a file is likely ignored by git or is hidden.
 func isGitIgnored(path string, config *Config) bool {
 	base := filepath.Base(path)
-	// Always ignore .git directory contents implicitly
+
+	// Always ignore .git directory contents
 	if base == ".git" || strings.Contains(path, string(filepath.Separator)+".git"+string(filepath.Separator)) {
 		return true
 	}
 
-	// Use git check-ignore if available
+	// Check git ignore status if git is available
 	if config.GitAvailable {
-		dir := filepath.Dir(path)
-		// Check if the directory is actually a git repo first
-		if CheckGitRepo(dir) { // If it is a git repo
-			isIgnored, err := CheckGitIgnore(dir, base)
-			if err == nil {
-				if isIgnored {
-					config.Logger.Printf("Verbose: Git ignored: %s\n", path)
-					return true
-				}
-				// File is not ignored, continue to other checks like hidden files
-			} else {
-				// Other errors running check-ignore, log it but fall back
-				config.Logger.Printf("Verbose: Error running git check-ignore for %s: %v. Falling back.\n", path, err)
-			}
+		// Lazy init GitChecker if not set (preserves behavior for manual Config creation)
+		if config.GitChecker == nil {
+			config.GitChecker = NewGitChecker()
 		}
-		// If not a git repo or check-ignore failed non-fatally, proceed to hidden check
+		dir := filepath.Dir(path)
+		isIgnored, err := config.GitChecker.IsIgnored(dir, base)
+		if err != nil {
+			config.Logger.Printf("Verbose: Error running git check-ignore for %s: %v. Falling back.\n", path, err)
+		} else if isIgnored {
+			config.Logger.Printf("Verbose: Git ignored: %s\n", path)
+			return true
+		}
 	}
 
-	// Fallback or additional check: Check if the file/directory itself is hidden
+	// Check if hidden file/directory (starts with dot)
 	if strings.HasPrefix(base, ".") && base != "." && base != ".." {
 		config.Logger.Printf("Verbose: Hidden file/dir ignored: %s\n", path)
 		return true
 	}
+
 	return false
 }
 
