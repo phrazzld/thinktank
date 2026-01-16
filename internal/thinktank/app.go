@@ -179,7 +179,6 @@ func generateOutput(
 
 	// Create adapters for the interfaces
 	apiServiceAdapter := &APIServiceAdapter{APIService: apiService}
-	contextGathererAdapter := &ContextGathererAdapter{ContextGatherer: contextGatherer}
 	fileWriterAdapter := &FileWriterAdapter{FileWriter: fileWriter}
 
 	// Create token counting service for orchestrator
@@ -188,7 +187,7 @@ func generateOutput(
 
 	orch := orchestratorConstructor(
 		apiServiceAdapter,
-		contextGathererAdapter,
+		contextGatherer, // Now directly implements interfaces.ContextGatherer
 		fileWriterAdapter,
 		auditLogger,
 		rateLimiter,

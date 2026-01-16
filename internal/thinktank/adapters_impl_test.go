@@ -8,10 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/models"
-	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
 // setupAPIServiceAdapterTest creates test fixtures for APIServiceAdapter testing
@@ -21,15 +19,6 @@ func setupAPIServiceAdapterTest() (*APIServiceAdapter, *MockAPIServiceForAdapter
 		APIService: mockAPIService,
 	}
 	return adapter, mockAPIService
-}
-
-// setupContextGathererAdapterTest creates test fixtures for ContextGathererAdapter testing
-func setupContextGathererAdapterTest() (*ContextGathererAdapter, *MockContextGatherer) {
-	mockContextGatherer := NewMockContextGatherer()
-	adapter := &ContextGathererAdapter{
-		ContextGatherer: mockContextGatherer,
-	}
-	return adapter, mockContextGatherer
 }
 
 // setupFileWriterAdapterTest creates test fixtures for FileWriterAdapter testing
@@ -407,136 +396,6 @@ func TestAPIServiceAdapter_GetModelTokenLimits_WithImplementation(t *testing.T) 
 	}
 }
 
-// We're removing TestAPIServiceAdapter_GetModelTokenLimits_WithoutImplementation_KnownModels
-// Since we've refactored the adapter to remove the special type assertions for MockAPIServiceWithoutExtensions,
-// this test is no longer relevant, and the adapter falls back to the implementation in the mock itself
-
-// Tests for ContextGathererAdapter
-
-// TestContextGathererAdapter_GatherContext verifies that GatherContext calls are properly delegated
-func TestContextGathererAdapter_GatherContext(t *testing.T) {
-	adapter, mock := setupContextGathererAdapterTest()
-
-	// Set up expected return values
-	expectedFiles := []fileutil.FileMeta{{Path: "test.go"}}
-	expectedStats := &ContextStats{
-		ProcessedFilesCount: 1,
-		CharCount:           100,
-		LineCount:           10,
-		ProcessedFiles:      []string{"test.go"},
-	}
-	expectedErr := errors.New("test error")
-
-	mock.GatherContextFunc = func(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error) {
-		return expectedFiles, expectedStats, expectedErr
-	}
-
-	// Create a test input
-	ctx := context.Background()
-	config := interfaces.GatherConfig{
-		Paths:        []string{"./testdata"},
-		Include:      "*.go",
-		Exclude:      "vendor/",
-		ExcludeNames: "test_",
-		Format:       "json",
-		Verbose:      true,
-		LogLevel:     1, // Debug level
-	}
-
-	// Call the adapter method
-	files, stats, err := adapter.GatherContext(ctx, config)
-
-	// If there was an expected error, verify it's returned correctly
-	if expectedErr != nil {
-		if err != expectedErr {
-			t.Errorf("Expected error %v, got %v", expectedErr, err)
-		}
-		// When there's an expected error, the other values should be nil
-		if files != nil || stats != nil {
-			t.Errorf("Expected nil results with error, got files=%v, stats=%v", files, stats)
-		}
-		return
-	}
-
-	// Since there's no expected error, verify that no error was returned
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-
-	// Verify that the adapter delegated the call correctly
-	if !reflect.DeepEqual(files, expectedFiles) {
-		t.Errorf("Expected files %v, got %v", expectedFiles, files)
-	}
-
-	// Verify that the returned stats match the expected stats
-	expectedInterfaceStats := internalToInterfacesContextStats(expectedStats)
-	if !reflect.DeepEqual(stats, expectedInterfaceStats) {
-		t.Errorf("Expected stats %+v, got %+v", expectedInterfaceStats, stats)
-	}
-
-	// Verify that the mock was called with the expected parameters
-	if len(mock.GatherContextCalls) != 1 {
-		t.Fatalf("Expected 1 call to GatherContext, got %d", len(mock.GatherContextCalls))
-	}
-	call := mock.GatherContextCalls[0]
-
-	// Verify the context is passed correctly
-	if call.Ctx != ctx {
-		t.Errorf("Unexpected context: %v", call.Ctx)
-	}
-
-	// Verify that the config was converted correctly
-	expectedInternalConfig := internalToInterfacesGatherConfig(config)
-	if !reflect.DeepEqual(call.Config, expectedInternalConfig) {
-		t.Errorf("Expected config %+v, got %+v", expectedInternalConfig, call.Config)
-	}
-}
-
-// TestContextGathererAdapter_DisplayDryRunInfo verifies that DisplayDryRunInfo calls are properly delegated
-func TestContextGathererAdapter_DisplayDryRunInfo(t *testing.T) {
-	adapter, mock := setupContextGathererAdapterTest()
-
-	// Set up expected return value
-	expectedErr := errors.New("test error")
-	mock.DisplayDryRunInfoFunc = func(ctx context.Context, stats *ContextStats) error {
-		return expectedErr
-	}
-
-	// Create a test input
-	ctx := context.Background()
-	stats := &interfaces.ContextStats{
-		ProcessedFilesCount: 1,
-		CharCount:           100,
-		LineCount:           10,
-		ProcessedFiles:      []string{"test.go"},
-	}
-
-	// Call the adapter method
-	err := adapter.DisplayDryRunInfo(ctx, stats)
-
-	// Verify that the adapter delegated the call correctly
-	if err != expectedErr {
-		t.Errorf("Expected error %v, got %v", expectedErr, err)
-	}
-
-	// Verify that the mock was called with the expected parameters
-	if len(mock.DisplayDryRunInfoCalls) != 1 {
-		t.Fatalf("Expected 1 call to DisplayDryRunInfo, got %d", len(mock.DisplayDryRunInfoCalls))
-	}
-	call := mock.DisplayDryRunInfoCalls[0]
-
-	// Verify the context is passed correctly
-	if call.Ctx != ctx {
-		t.Errorf("Unexpected context: %v", call.Ctx)
-	}
-
-	// Verify that the stats were converted correctly
-	expectedInternalStats := interfacesToInternalContextStats(stats)
-	if !reflect.DeepEqual(call.Stats, expectedInternalStats) {
-		t.Errorf("Expected stats %+v, got %+v", expectedInternalStats, call.Stats)
-	}
-}
-
 // Tests for FileWriterAdapter
 
 // TestFileWriterAdapter_SaveToFile verifies that SaveToFile calls are properly delegated
@@ -569,111 +428,5 @@ func TestFileWriterAdapter_SaveToFile(t *testing.T) {
 	call := mock.SaveToFileCalls[0]
 	if call.Content != content || call.OutputFile != outputFile {
 		t.Errorf("Unexpected parameters: Content = %s, OutputFile = %s", call.Content, call.OutputFile)
-	}
-}
-
-// Tests for conversion functions
-
-// TestInternalToInterfacesGatherConfig verifies the conversion from interfaces.GatherConfig to internal GatherConfig
-func TestInternalToInterfacesGatherConfig(t *testing.T) {
-	input := interfaces.GatherConfig{
-		Paths:        []string{"path1", "path2"},
-		Include:      "*.go",
-		Exclude:      "vendor/",
-		ExcludeNames: "test_",
-		Format:       "json",
-		Verbose:      true,
-		LogLevel:     1, // Debug level
-	}
-
-	result := internalToInterfacesGatherConfig(input)
-
-	// Verify that all fields were copied correctly
-	if !reflect.DeepEqual(result.Paths, input.Paths) {
-		t.Errorf("Expected Paths %v, got %v", input.Paths, result.Paths)
-	}
-	if result.Include != input.Include {
-		t.Errorf("Expected Include %s, got %s", input.Include, result.Include)
-	}
-	if result.Exclude != input.Exclude {
-		t.Errorf("Expected Exclude %s, got %s", input.Exclude, result.Exclude)
-	}
-	if result.ExcludeNames != input.ExcludeNames {
-		t.Errorf("Expected ExcludeNames %s, got %s", input.ExcludeNames, result.ExcludeNames)
-	}
-	if result.Format != input.Format {
-		t.Errorf("Expected Format %s, got %s", input.Format, result.Format)
-	}
-	if result.Verbose != input.Verbose {
-		t.Errorf("Expected Verbose %v, got %v", input.Verbose, result.Verbose)
-	}
-	if result.LogLevel != input.LogLevel {
-		t.Errorf("Expected LogLevel %v, got %v", input.LogLevel, result.LogLevel)
-	}
-}
-
-// TestInternalToInterfacesContextStats verifies the conversion from internal ContextStats to interfaces.ContextStats
-func TestInternalToInterfacesContextStats(t *testing.T) {
-	// Test with non-nil stats
-	input := &ContextStats{
-		ProcessedFilesCount: 10,
-		CharCount:           1000,
-		LineCount:           100,
-		ProcessedFiles:      []string{"file1.go", "file2.go"},
-	}
-
-	result := internalToInterfacesContextStats(input)
-
-	// Verify that all fields were copied correctly
-	if result.ProcessedFilesCount != input.ProcessedFilesCount {
-		t.Errorf("Expected ProcessedFilesCount %d, got %d", input.ProcessedFilesCount, result.ProcessedFilesCount)
-	}
-	if result.CharCount != input.CharCount {
-		t.Errorf("Expected CharCount %d, got %d", input.CharCount, result.CharCount)
-	}
-	if result.LineCount != input.LineCount {
-		t.Errorf("Expected LineCount %d, got %d", input.LineCount, result.LineCount)
-	}
-	if !reflect.DeepEqual(result.ProcessedFiles, input.ProcessedFiles) {
-		t.Errorf("Expected ProcessedFiles %v, got %v", input.ProcessedFiles, result.ProcessedFiles)
-	}
-
-	// Test with nil stats
-	nilResult := internalToInterfacesContextStats(nil)
-	if nilResult != nil {
-		t.Errorf("Expected nil result for nil input, got %v", nilResult)
-	}
-}
-
-// TestInterfacesToInternalContextStats verifies the conversion from interfaces.ContextStats to internal ContextStats
-func TestInterfacesToInternalContextStats(t *testing.T) {
-	// Test with non-nil stats
-	input := &interfaces.ContextStats{
-		ProcessedFilesCount: 10,
-		CharCount:           1000,
-		LineCount:           100,
-		ProcessedFiles:      []string{"file1.go", "file2.go"},
-	}
-
-	result := interfacesToInternalContextStats(input)
-
-	// Verify that all fields were copied correctly
-	if result.ProcessedFilesCount != input.ProcessedFilesCount {
-		t.Errorf("Expected ProcessedFilesCount %d, got %d", input.ProcessedFilesCount, result.ProcessedFilesCount)
-	}
-	if result.CharCount != input.CharCount {
-		t.Errorf("Expected CharCount %d, got %d", input.CharCount, result.CharCount)
-	}
-	if result.LineCount != input.LineCount {
-		t.Errorf("Expected LineCount %d, got %d", input.LineCount, result.LineCount)
-	}
-	if !reflect.DeepEqual(result.ProcessedFiles, input.ProcessedFiles) {
-		t.Errorf("Expected ProcessedFiles %v, got %v", input.ProcessedFiles, result.ProcessedFiles)
-	}
-
-	// Test with nil stats
-	nilResult := interfacesToInternalContextStats(nil)
-	if nilResult != nil {
-		t.Errorf("Expected nil result for nil input, got %v", nilResult)
 	}
 }

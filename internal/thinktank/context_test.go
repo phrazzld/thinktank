@@ -11,6 +11,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/testutil"
+	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
 // mockConsoleWriter is a simple mock implementation of ConsoleWriter for testing
@@ -63,7 +64,7 @@ func TestGatherContext(t *testing.T) {
 	tests := []struct {
 		name           string
 		setupFiles     map[string][]byte
-		config         GatherConfig
+		config         interfaces.GatherConfig
 		dryRun         bool
 		expectError    bool
 		expectFiles    int
@@ -76,7 +77,7 @@ func TestGatherContext(t *testing.T) {
 				"config.go": []byte("package main\n\ntype Config struct {\n\tValue string\n}"),
 				"README.md": []byte("# Project\n\nThis is a test project."),
 			},
-			config: GatherConfig{
+			config: interfaces.GatherConfig{
 				Paths:        []string{}, // Will be set to temp dir
 				Include:      "",
 				Exclude:      "",
@@ -96,7 +97,7 @@ func TestGatherContext(t *testing.T) {
 				"test.go":   []byte("package test"),
 				"helper.go": []byte("package test\n\nfunc Helper() {}"),
 			},
-			config: GatherConfig{
+			config: interfaces.GatherConfig{
 				Paths:        []string{}, // Will be set to temp dir
 				Include:      ".go",
 				Exclude:      "",
@@ -113,7 +114,7 @@ func TestGatherContext(t *testing.T) {
 		{
 			name:       "empty directory",
 			setupFiles: map[string][]byte{},
-			config: GatherConfig{
+			config: interfaces.GatherConfig{
 				Paths:        []string{}, // Will be set to temp dir
 				Include:      "",
 				Exclude:      "",
@@ -134,7 +135,7 @@ func TestGatherContext(t *testing.T) {
 				"test.txt":    []byte("test content"),
 				"config.json": []byte(`{"test": true}`),
 			},
-			config: GatherConfig{
+			config: interfaces.GatherConfig{
 				Paths:        []string{}, // Will be set to temp dir
 				Include:      "",
 				Exclude:      ".txt,.json",
@@ -281,12 +282,12 @@ func TestGatherContext(t *testing.T) {
 func TestDisplayDryRunInfo(t *testing.T) {
 	tests := []struct {
 		name                string
-		stats               *ContextStats
+		stats               *interfaces.ContextStats
 		expectedLogMessages []string
 	}{
 		{
 			name: "display info with multiple files",
-			stats: &ContextStats{
+			stats: &interfaces.ContextStats{
 				ProcessedFilesCount: 3,
 				CharCount:           150,
 				LineCount:           25,
@@ -308,7 +309,7 @@ func TestDisplayDryRunInfo(t *testing.T) {
 		},
 		{
 			name: "display info with no files",
-			stats: &ContextStats{
+			stats: &interfaces.ContextStats{
 				ProcessedFilesCount: 0,
 				CharCount:           0,
 				LineCount:           0,
@@ -327,7 +328,7 @@ func TestDisplayDryRunInfo(t *testing.T) {
 		},
 		{
 			name: "display info with single file",
-			stats: &ContextStats{
+			stats: &interfaces.ContextStats{
 				ProcessedFilesCount: 1,
 				CharCount:           42,
 				LineCount:           3,
@@ -410,7 +411,7 @@ func TestGatherContext_AuditLogging(t *testing.T) {
 	gatherer := NewContextGatherer(mockLogger, mockConsoleWriter, false, mockClient, mockLogger)
 
 	// Create config
-	config := GatherConfig{
+	config := interfaces.GatherConfig{
 		Paths:        []string{tempDir},
 		Include:      "",
 		Exclude:      "",
@@ -513,6 +514,6 @@ func TestNewContextGatherer(t *testing.T) {
 		t.Fatal("NewContextGatherer should not return nil")
 	}
 
-	// Verify the gatherer implements the interface
-	var _ = ContextGatherer(gatherer)
+	// Verify the gatherer implements the interface (compile-time check)
+	_ = (interfaces.ContextGatherer)(gatherer)
 }
