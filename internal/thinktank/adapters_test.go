@@ -8,7 +8,6 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
@@ -180,49 +179,6 @@ func (m *MockAPIServiceForAdapter) GetModelTokenLimits(ctx context.Context, mode
 		return m.GetModelTokenLimitsFunc(ctx, modelName)
 	}
 	return 0, 0, errors.New("GetModelTokenLimits not implemented")
-}
-
-// TestTokenResult represents a token count result structure for testing only
-// This replaces the removed production TokenResult
-type TestTokenResult struct {
-	TokenCount   int32
-	InputLimit   int32
-	ExceedsLimit bool
-	LimitError   string
-	Percentage   float64
-}
-
-// MockTokenManagerForAdapter is a testing mock for the TokenManager interface, specifically for adapter tests
-type MockTokenManagerForAdapter struct {
-	CheckTokenLimitFunc       func(ctx context.Context, prompt string) error
-	GetTokenInfoFunc          func(ctx context.Context, prompt string) (*TestTokenResult, error)
-	PromptForConfirmationFunc func(tokenCount int32, threshold int) bool
-}
-
-func (m *MockTokenManagerForAdapter) CheckTokenLimit(ctx context.Context, prompt string) error {
-	if m.CheckTokenLimitFunc != nil {
-		return m.CheckTokenLimitFunc(ctx, prompt)
-	}
-	return errors.New("CheckTokenLimit not implemented")
-}
-
-func (m *MockTokenManagerForAdapter) GetTokenInfo(ctx context.Context, prompt string) (*TestTokenResult, error) {
-	if m.GetTokenInfoFunc != nil {
-		return m.GetTokenInfoFunc(ctx, prompt)
-	}
-	return nil, errors.New("GetTokenInfo not implemented")
-}
-
-func (m *MockTokenManagerForAdapter) PromptForConfirmation(tokenCount int32, threshold int) bool {
-	if m.PromptForConfirmationFunc != nil {
-		return m.PromptForConfirmationFunc(tokenCount, threshold)
-	}
-	return false
-}
-
-// GetAdapterTestLogger returns a logger for adapter tests
-func GetAdapterTestLogger() logutil.LoggerInterface {
-	return logutil.NewLogger(logutil.DebugLevel, nil, "[adapter-test] ")
 }
 
 // MockAPIServiceWithoutExtensions implements the full interfaces.APIService interface

@@ -21,9 +21,6 @@ func setupAPIServiceAdapterTest() (*APIServiceAdapter, *MockAPIServiceForAdapter
 	return adapter, mockAPIService
 }
 
-// Note: setupContextGathererAdapterTest was removed as part of issue #121
-// ContextGatherer now directly implements interfaces.ContextGatherer
-
 // setupFileWriterAdapterTest creates test fixtures for FileWriterAdapter testing
 func setupFileWriterAdapterTest() (*FileWriterAdapter, *MockFileWriter) {
 	mockFileWriter := NewMockFileWriter()
@@ -399,13 +396,6 @@ func TestAPIServiceAdapter_GetModelTokenLimits_WithImplementation(t *testing.T) 
 	}
 }
 
-// We're removing TestAPIServiceAdapter_GetModelTokenLimits_WithoutImplementation_KnownModels
-// Since we've refactored the adapter to remove the special type assertions for MockAPIServiceWithoutExtensions,
-// this test is no longer relevant, and the adapter falls back to the implementation in the mock itself
-
-// Note: ContextGathererAdapter tests were removed as part of issue #121
-// ContextGatherer now directly implements interfaces.ContextGatherer
-
 // Tests for FileWriterAdapter
 
 // TestFileWriterAdapter_SaveToFile verifies that SaveToFile calls are properly delegated
@@ -440,8 +430,3 @@ func TestFileWriterAdapter_SaveToFile(t *testing.T) {
 		t.Errorf("Unexpected parameters: Content = %s, OutputFile = %s", call.Content, call.OutputFile)
 	}
 }
-
-// Note: Tests for conversion functions (TestInternalToInterfacesGatherConfig,
-// TestInternalToInterfacesContextStats, TestInterfacesToInternalContextStats) were removed
-// as part of issue #121. These conversion functions are no longer needed since
-// ContextStats, GatherConfig, and ContextGatherer are now defined once in interfaces/.

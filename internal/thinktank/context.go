@@ -34,8 +34,6 @@ func NewContextGatherer(logger logutil.LoggerInterface, consoleWriter logutil.Co
 	}
 }
 
-// Token counting functions removed as part of T032F - token handling refactoring
-
 // GatherContext collects and processes files based on configuration
 func (cg *contextGatherer) GatherContext(ctx context.Context, config interfaces.GatherConfig) ([]fileutil.FileMeta, *interfaces.ContextStats, error) {
 	// Log start of context gathering operation to audit log
@@ -127,19 +125,15 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config interfaces.
 	cg.logger.InfoContext(ctx, "Calculating statistics for %d processed files...", stats.ProcessedFilesCount)
 	startTime := time.Now()
 
-	// Calculate character and line counts directly
+	// Calculate character and line counts
 	charCount := len(projectContext)
 	lineCount := strings.Count(projectContext, "\n") + 1
-
-	// Token counting code removed as part of T032F - token handling refactoring
 
 	duration := time.Since(startTime)
 	cg.logger.DebugContext(ctx, "Statistics calculation completed in %v", duration)
 
-	// Store statistics in the stats struct
 	stats.CharCount = charCount
 	stats.LineCount = lineCount
-	// TokenCount field removed as part of T032F - token handling refactoring
 
 	// Handle output based on mode
 	if processedFilesCount > 0 {
@@ -153,13 +147,12 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config interfaces.
 		}
 	}
 
-	// Log the successful completion of context gathering to audit log
+	// Log successful completion to audit log
 	outputs := map[string]interface{}{
 		"processed_files_count": stats.ProcessedFilesCount,
 		"char_count":            stats.CharCount,
 		"line_count":            stats.LineCount,
-		// token_count field removed as part of T032F - token handling refactoring
-		"files_count": len(contextFiles),
+		"files_count":           len(contextFiles),
 	}
 	if logErr := cg.auditLogger.LogOp(ctx, "GatherContext", "Success", inputs, outputs, nil); logErr != nil {
 		cg.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
@@ -200,9 +193,6 @@ func (cg *contextGatherer) DisplayDryRunInfo(ctx context.Context, stats *interfa
 	cg.consoleWriter.StatusMessage(fmt.Sprintf("  Files: %d", stats.ProcessedFilesCount))
 	cg.consoleWriter.StatusMessage(fmt.Sprintf("  Lines: %d", stats.LineCount))
 	cg.consoleWriter.StatusMessage(fmt.Sprintf("  Characters: %d", stats.CharCount))
-
-	// Token counting and limit comparison code removed as part of T032F - token handling refactoring
-
 	cg.consoleWriter.StatusMessage("")
 	cg.consoleWriter.SuccessMessage("Dry run completed successfully.")
 	cg.consoleWriter.StatusMessage("To generate content, run without the --dry-run flag.")

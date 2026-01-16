@@ -514,6 +514,6 @@ func TestNewContextGatherer(t *testing.T) {
 		t.Fatal("NewContextGatherer should not return nil")
 	}
 
-	// Verify the gatherer implements the interface
-	var _ interfaces.ContextGatherer = gatherer
+	// Verify the gatherer implements the interface (compile-time check)
+	_ = (interfaces.ContextGatherer)(gatherer)
 }

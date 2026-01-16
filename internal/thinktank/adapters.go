@@ -68,11 +68,8 @@ func (a *APIServiceAdapter) ValidateModelParameter(ctx context.Context, modelNam
 	return a.APIService.ValidateModelParameter(ctx, modelName, paramName, value)
 }
 
-// Note: TokenManagerAdapter was removed as part of T032A
-// to remove token handling from the application.
-
-// Note: ContextGathererAdapter was removed as part of issue #121
-// ContextStats, GatherConfig, and ContextGatherer are now defined once in interfaces/
+// Note: TokenManagerAdapter and ContextGathererAdapter were removed.
+// Types are now defined once in interfaces/.
 
 // FileWriterAdapter provides an adapter for different FileWriter implementations
 // It adapts the internal FileWriter interface to the interfaces.FileWriter interface
