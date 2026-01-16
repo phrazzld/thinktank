@@ -19,6 +19,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
 	"github.com/phrazzld/thinktank/internal/thinktank"
+	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 	"github.com/phrazzld/thinktank/internal/thinktank/orchestrator"
 	"github.com/phrazzld/thinktank/internal/version"
 )
@@ -273,7 +274,7 @@ func runApplication(ctx context.Context, cfg *config.MinimalConfig, logger logut
 	// Create orchestrator with adapters for type compatibility
 	orch := orchestrator.NewOrchestrator(
 		apiService,
-		&thinktank.ContextGathererAdapter{ContextGatherer: contextGatherer},
+		contextGatherer, // Now directly implements interfaces.ContextGatherer
 		fileWriter,
 		auditLogger,
 		rateLimiter,
@@ -425,7 +426,7 @@ func runDryRun(ctx context.Context, cfg *config.MinimalConfig, instructions stri
 
 	// Gather context
 	// Create gather config
-	gatherConfig := thinktank.GatherConfig{
+	gatherConfig := interfaces.GatherConfig{
 		Paths:        cfg.TargetPaths,
 		Format:       appConfig.Format,
 		Exclude:      appConfig.Excludes.Extensions,

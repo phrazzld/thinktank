@@ -11,38 +11,10 @@ import (
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
-// ContextStats holds information about processed files and context size
-type ContextStats struct {
-	ProcessedFilesCount int
-	CharCount           int
-	LineCount           int
-	// TokenCount field removed as part of T032F - token handling refactoring
-	ProcessedFiles []string
-}
-
-// GatherConfig holds parameters needed for gathering context
-type GatherConfig struct {
-	Paths        []string
-	Include      string
-	Exclude      string
-	ExcludeNames string
-	Format       string
-	Verbose      bool
-	LogLevel     logutil.LogLevel
-}
-
-// ContextGatherer defines the interface for gathering project context
-type ContextGatherer interface {
-	// GatherContext collects and processes files based on configuration
-	GatherContext(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error)
-
-	// DisplayDryRunInfo shows detailed information for dry run mode
-	DisplayDryRunInfo(ctx context.Context, stats *ContextStats) error
-}
-
-// contextGatherer implements the ContextGatherer interface
+// contextGatherer implements the interfaces.ContextGatherer interface
 type contextGatherer struct {
 	logger        logutil.LoggerInterface
 	consoleWriter logutil.ConsoleWriter
@@ -51,8 +23,8 @@ type contextGatherer struct {
 	auditLogger   auditlog.AuditLogger
 }
 
-// NewContextGatherer creates a new ContextGatherer instance
-func NewContextGatherer(logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter, dryRun bool, client llm.LLMClient, auditLogger auditlog.AuditLogger) ContextGatherer {
+// NewContextGatherer creates a new interfaces.ContextGatherer instance
+func NewContextGatherer(logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter, dryRun bool, client llm.LLMClient, auditLogger auditlog.AuditLogger) interfaces.ContextGatherer {
 	return &contextGatherer{
 		logger:        logger,
 		consoleWriter: consoleWriter,
@@ -65,7 +37,7 @@ func NewContextGatherer(logger logutil.LoggerInterface, consoleWriter logutil.Co
 // Token counting functions removed as part of T032F - token handling refactoring
 
 // GatherContext collects and processes files based on configuration
-func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error) {
+func (cg *contextGatherer) GatherContext(ctx context.Context, config interfaces.GatherConfig) ([]fileutil.FileMeta, *interfaces.ContextStats, error) {
 	// Log start of context gathering operation to audit log
 	gatherStartTime := time.Now()
 	inputs := map[string]interface{}{
@@ -98,7 +70,7 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 	fileConfig := fileutil.NewConfig(config.Verbose, config.Include, config.Exclude, config.ExcludeNames, config.Format, cg.logger)
 
 	// Initialize ContextStats
-	stats := &ContextStats{
+	stats := &interfaces.ContextStats{
 		ProcessedFiles: make([]string, 0),
 	}
 
@@ -197,7 +169,7 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 }
 
 // DisplayDryRunInfo shows detailed information for dry run mode
-func (cg *contextGatherer) DisplayDryRunInfo(ctx context.Context, stats *ContextStats) error {
+func (cg *contextGatherer) DisplayDryRunInfo(ctx context.Context, stats *interfaces.ContextStats) error {
 	// Log detailed information to structured logs for debugging
 	cg.logger.InfoContext(ctx, "Dry run mode: displaying context information")
 	cg.logger.DebugContext(ctx, "Found %d files matching filters", stats.ProcessedFilesCount)

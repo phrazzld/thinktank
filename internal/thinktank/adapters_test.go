@@ -10,6 +10,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/models"
+	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
 // MockAPIServiceForAdapter is a testing mock for the APIService interface, specifically for adapter tests
@@ -303,11 +304,11 @@ func NewMockAPIServiceWithoutExtensions() *MockAPIServiceWithoutExtensions {
 	}
 }
 
-// MockContextGatherer implements ContextGatherer for testing
+// MockContextGatherer implements interfaces.ContextGatherer for testing
 type MockContextGatherer struct {
 	// Function fields
-	GatherContextFunc     func(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error)
-	DisplayDryRunInfoFunc func(ctx context.Context, stats *ContextStats) error
+	GatherContextFunc     func(ctx context.Context, config interfaces.GatherConfig) ([]fileutil.FileMeta, *interfaces.ContextStats, error)
+	DisplayDryRunInfoFunc func(ctx context.Context, stats *interfaces.ContextStats) error
 
 	// Call tracking fields
 	GatherContextCalls     []GatherContextCall
@@ -317,16 +318,16 @@ type MockContextGatherer struct {
 // Call record structs
 type GatherContextCall struct {
 	Ctx    context.Context
-	Config GatherConfig
+	Config interfaces.GatherConfig
 }
 
 type DisplayDryRunInfoCall struct {
 	Ctx   context.Context
-	Stats *ContextStats
+	Stats *interfaces.ContextStats
 }
 
 // MockContextGatherer method implementations
-func (m *MockContextGatherer) GatherContext(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error) {
+func (m *MockContextGatherer) GatherContext(ctx context.Context, config interfaces.GatherConfig) ([]fileutil.FileMeta, *interfaces.ContextStats, error) {
 	m.GatherContextCalls = append(m.GatherContextCalls, GatherContextCall{
 		Ctx:    ctx,
 		Config: config,
@@ -334,7 +335,7 @@ func (m *MockContextGatherer) GatherContext(ctx context.Context, config GatherCo
 	return m.GatherContextFunc(ctx, config)
 }
 
-func (m *MockContextGatherer) DisplayDryRunInfo(ctx context.Context, stats *ContextStats) error {
+func (m *MockContextGatherer) DisplayDryRunInfo(ctx context.Context, stats *interfaces.ContextStats) error {
 	m.DisplayDryRunInfoCalls = append(m.DisplayDryRunInfoCalls, DisplayDryRunInfoCall{
 		Ctx:   ctx,
 		Stats: stats,
@@ -345,10 +346,10 @@ func (m *MockContextGatherer) DisplayDryRunInfo(ctx context.Context, stats *Cont
 // NewMockContextGatherer creates a new MockContextGatherer with default implementations
 func NewMockContextGatherer() *MockContextGatherer {
 	return &MockContextGatherer{
-		GatherContextFunc: func(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error) {
+		GatherContextFunc: func(ctx context.Context, config interfaces.GatherConfig) ([]fileutil.FileMeta, *interfaces.ContextStats, error) {
 			return nil, nil, nil
 		},
-		DisplayDryRunInfoFunc: func(ctx context.Context, stats *ContextStats) error {
+		DisplayDryRunInfoFunc: func(ctx context.Context, stats *interfaces.ContextStats) error {
 			return nil
 		},
 	}

@@ -4,7 +4,6 @@ package thinktank
 import (
 	"context"
 
-	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
@@ -72,78 +71,8 @@ func (a *APIServiceAdapter) ValidateModelParameter(ctx context.Context, modelNam
 // Note: TokenManagerAdapter was removed as part of T032A
 // to remove token handling from the application.
 
-// ContextGathererAdapter provides an adapter for different ContextGatherer implementations
-// It adapts the internal ContextGatherer interface to the interfaces.ContextGatherer interface
-type ContextGathererAdapter struct {
-	// The underlying ContextGatherer implementation from the internal package
-	ContextGatherer ContextGatherer
-}
-
-// Convert internal GatherConfig to interfaces.GatherConfig
-func internalToInterfacesGatherConfig(config interfaces.GatherConfig) GatherConfig {
-	return GatherConfig{
-		Paths:        config.Paths,
-		Include:      config.Include,
-		Exclude:      config.Exclude,
-		ExcludeNames: config.ExcludeNames,
-		Format:       config.Format,
-		Verbose:      config.Verbose,
-		LogLevel:     config.LogLevel,
-	}
-}
-
-// Convert internal ContextStats to interfaces.ContextStats
-func internalToInterfacesContextStats(stats *ContextStats) *interfaces.ContextStats {
-	if stats == nil {
-		return nil
-	}
-	return &interfaces.ContextStats{
-		ProcessedFilesCount: stats.ProcessedFilesCount,
-		CharCount:           stats.CharCount,
-		LineCount:           stats.LineCount,
-		// TokenCount field removed as part of T032F - token handling refactoring
-		ProcessedFiles: stats.ProcessedFiles,
-	}
-}
-
-// Convert interfaces.ContextStats to internal ContextStats
-func interfacesToInternalContextStats(stats *interfaces.ContextStats) *ContextStats {
-	if stats == nil {
-		return nil
-	}
-	return &ContextStats{
-		ProcessedFilesCount: stats.ProcessedFilesCount,
-		CharCount:           stats.CharCount,
-		LineCount:           stats.LineCount,
-		// TokenCount field removed as part of T032F - token handling refactoring
-		ProcessedFiles: stats.ProcessedFiles,
-	}
-}
-
-// GatherContext adapts between interfaces.GatherConfig and internal GatherConfig
-func (c *ContextGathererAdapter) GatherContext(ctx context.Context, config interfaces.GatherConfig) ([]fileutil.FileMeta, *interfaces.ContextStats, error) {
-	// Convert interfaces.GatherConfig to internal GatherConfig
-	internalConfig := internalToInterfacesGatherConfig(config)
-
-	// Call the underlying internal implementation
-	files, stats, err := c.ContextGatherer.GatherContext(ctx, internalConfig)
-
-	// Convert internal ContextStats to interfaces.ContextStats if no error
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return files, internalToInterfacesContextStats(stats), nil
-}
-
-// DisplayDryRunInfo adapts between interfaces.ContextStats and internal ContextStats
-func (c *ContextGathererAdapter) DisplayDryRunInfo(ctx context.Context, stats *interfaces.ContextStats) error {
-	// Convert interfaces.ContextStats to internal ContextStats
-	internalStats := interfacesToInternalContextStats(stats)
-
-	// Call the underlying internal implementation
-	return c.ContextGatherer.DisplayDryRunInfo(ctx, internalStats)
-}
+// Note: ContextGathererAdapter was removed as part of issue #121
+// ContextStats, GatherConfig, and ContextGatherer are now defined once in interfaces/
 
 // FileWriterAdapter provides an adapter for different FileWriter implementations
 // It adapts the internal FileWriter interface to the interfaces.FileWriter interface
