@@ -501,23 +501,29 @@ func ListModelsForProvider(provider string) []string {
 }
 
 // coreCouncilModels defines the default set of top-performing models used when
-// no models are explicitly specified. These are the 5 most intelligent models
+// no models are explicitly specified. These 8 models represent frontier intelligence
 // based on LMArena rankings and benchmark performance (January 2026):
-//   - gemini-3-pro: #1 LMArena overall, Google's flagship
+//   - gemini-3-pro: #1 LMArena overall, 1M context, Google's flagship
 //   - claude-opus-4.5: Best coding (80.9% SWE-bench), Anthropic's flagship
-//   - gpt-5.2: Best math/logic (100% AIME), OpenAI's flagship
-//   - grok-4.1-fast: Strong Arena, largest context (2M), xAI's flagship
-//   - deepseek-v3.2: Frontier-class at great value, DeepSeek's flagship
+//   - gpt-5.2: Best math/logic (100% AIME), fastest inference, OpenAI's flagship
+//   - grok-4.1-fast: Largest context (2M), strong Arena, xAI's flagship
+//   - deepseek-v3.2: Frontier-class reasoning at great value, DeepSeek's flagship
+//   - glm-4.7: Best sustained agentic (87.4 τ²-Bench), 84.9% LiveCodeBench, Zhipu's flagship
+//   - kimi-k2-thinking: Elite math (99.1% AIME), interleaved thinking, Moonshot's flagship
+//   - minimax-m2.1: Fast/efficient (10B active), 72.5% SWE-bench multilingual, MiniMax's flagship
 var coreCouncilModels = []string{
 	"gemini-3-pro",
 	"claude-opus-4.5",
 	"gpt-5.2",
 	"grok-4.1-fast",
 	"deepseek-v3.2",
+	"glm-4.7",
+	"kimi-k2-thinking",
+	"minimax-m2.1",
 }
 
 // GetCoreCouncilModels returns the default set of top-performing models.
-// This curated list of 5 models represents the best-in-class for raw intelligence
+// This curated list of 8 models represents the best-in-class for raw intelligence
 // across different providers, ensuring diverse perspectives for synthesis.
 func GetCoreCouncilModels() []string {
 	// Return a copy to prevent modification

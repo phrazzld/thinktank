@@ -70,7 +70,7 @@ func TestSetupConfiguration(t *testing.T) {
 				Flags:            FlagDryRun,
 			},
 			tokenServiceModels: []string{"gemini-3-flash"}, // Token service models are not used; core council is returned
-			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2"},
+			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2", "glm-4.7", "kimi-k2-thinking", "minimax-m2.1"},
 			expectedVerbose:    false,
 			expectedLogLevel:   logutil.InfoLevel,
 			expectedDryRun:     true,
@@ -87,7 +87,7 @@ func TestSetupConfiguration(t *testing.T) {
 				Flags:            FlagVerbose,
 			},
 			tokenServiceModels: []string{"gemini-3-flash"}, // Token service models are not used; core council is returned
-			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2"},
+			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2", "glm-4.7", "kimi-k2-thinking", "minimax-m2.1"},
 			expectedVerbose:    true,
 			expectedLogLevel:   logutil.DebugLevel,
 			expectedDryRun:     false,
@@ -104,7 +104,7 @@ func TestSetupConfiguration(t *testing.T) {
 				Flags:            FlagDebug,
 			},
 			tokenServiceModels: []string{"gemini-3-flash"}, // Token service models are not used; core council is returned
-			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2"},
+			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2", "glm-4.7", "kimi-k2-thinking", "minimax-m2.1"},
 			expectedVerbose:    false,
 			expectedLogLevel:   logutil.DebugLevel,
 			expectedDryRun:     false,
@@ -121,7 +121,7 @@ func TestSetupConfiguration(t *testing.T) {
 				Flags:            FlagDryRun | FlagVerbose | FlagQuiet | FlagNoProgress | FlagJsonLogs | FlagDebug,
 			},
 			tokenServiceModels: []string{"gemini-3-flash"}, // Token service models are not used; core council is returned
-			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2"},
+			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2", "glm-4.7", "kimi-k2-thinking", "minimax-m2.1"},
 			expectedVerbose:    true,
 			expectedLogLevel:   logutil.DebugLevel, // Both verbose and debug set debug level
 			expectedDryRun:     true,
@@ -138,7 +138,7 @@ func TestSetupConfiguration(t *testing.T) {
 				Flags:            0, // No flags
 			},
 			tokenServiceModels: []string{"gemini-3-flash", "gpt-5.2"}, // Token service models are not used; core council is returned
-			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2"},
+			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2", "glm-4.7", "kimi-k2-thinking", "minimax-m2.1"},
 			expectedVerbose:    false,
 			expectedLogLevel:   logutil.InfoLevel,
 			expectedDryRun:     false,
@@ -155,7 +155,7 @@ func TestSetupConfiguration(t *testing.T) {
 				Flags:            FlagSynthesis,
 			},
 			tokenServiceModels: []string{"gemini-3-flash"}, // Token service models are not used; core council is returned
-			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2"},
+			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2", "glm-4.7", "kimi-k2-thinking", "minimax-m2.1"},
 			expectedVerbose:    false,
 			expectedLogLevel:   logutil.InfoLevel,
 			expectedDryRun:     false,

@@ -608,7 +608,7 @@ func createLoggerWithRouting(cfg *config.MinimalConfig, outputDir string) (logut
 
 // selectModelsForConfig selects the default "core council" of top-performing models.
 // Returns the list of model names and an optional synthesis model.
-// When no models are specified, uses the curated core council (5 best models by intelligence).
+// When no models are specified, uses the curated core council (8 best models by intelligence).
 func selectModelsForConfig(simplifiedConfig *SimplifiedConfig) ([]string, string) {
 	// Check if synthesis flag is explicitly set
 	forceSynthesis := simplifiedConfig.HasFlag(FlagSynthesis)

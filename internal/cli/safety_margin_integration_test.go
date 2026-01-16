@@ -97,7 +97,7 @@ func TestSafetyMarginIntegration(t *testing.T) {
 
 			// Basic validation that model selection worked - should return core council
 			assert.NotEmpty(t, models, "Should select at least one model")
-			assert.Len(t, models, 5, "Should return 5 core council models")
+			assert.Len(t, models, 8, "Should return 8 core council models")
 			assert.NotEmpty(t, synthesis, "Should have a synthesis model")
 
 			// Verify the safety margin is stored in config for later use during execution
