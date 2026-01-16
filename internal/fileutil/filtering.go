@@ -10,10 +10,15 @@ import (
 	"unicode"
 )
 
-// Package-level caches for git operations (reset naturally per-run)
+// Package-level caches for git operations.
+// Keys: normalized paths via filepath.Clean (or filepath.Join for ignore cache)
+// Values: bool results from git subprocess calls
+// Lifetime: process lifetime, reset via ClearGitCaches() for test isolation
+// Size: O(unique directories) - bounded by filesystem depth
+// Thread-safety: sync.Map provides concurrent read/write access
 var (
-	gitRepoCache   sync.Map // map[string]bool - dir -> isRepo
-	gitIgnoreCache sync.Map // map[string]bool - dir/filename -> isIgnored
+	gitRepoCache   sync.Map // dir path -> isRepo
+	gitIgnoreCache sync.Map // dir/filename -> isIgnored
 )
 
 // FileFilterResult represents the result of file filtering operations
