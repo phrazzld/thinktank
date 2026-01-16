@@ -42,6 +42,11 @@ var DefaultSecretPatterns = []SecretPattern{
 		Description: "Detected text matching OpenAI API key format",
 	},
 	{
+		Name:        "OpenRouter API Key",
+		Regex:       regexp.MustCompile(`sk-or-[0-9a-zA-Z_-]{8,}`),
+		Description: "Detected text matching OpenRouter API key format",
+	},
+	{
 		Name:        "Google API Key",
 		Regex:       regexp.MustCompile(`AIza[0-9A-Za-z-_]{35}`),
 		Description: "Detected text matching Google API key format",

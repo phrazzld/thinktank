@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"strings"
 	"testing"
 )
 
@@ -279,6 +278,16 @@ func TestDefaultSecretPatterns(t *testing.T) {
 			shouldMatch: []string{"OpenAI API Key"},
 		},
 		{
+			name:        "OpenRouter API Key (production format)",
+			message:     "OpenRouter: sk-or-v1_test1234567890abcdefghijklmnopqrstuvwxyz",
+			shouldMatch: []string{"OpenRouter API Key"},
+		},
+		{
+			name:        "OpenRouter API Key (test format)",
+			message:     "OpenRouter: sk-or-test-key",
+			shouldMatch: []string{"OpenRouter API Key"},
+		},
+		{
 			name:        "Google API Key",
 			message:     "Google key: AIzaSyC6MkjIAB-fJvnuvTqOTvWHP9xxxx_xxxxx",
 			shouldMatch: []string{"Google API Key"},
@@ -319,7 +328,7 @@ func TestDefaultSecretPatterns(t *testing.T) {
 // Helper function to check if a slice contains a string
 func contains(slice []string, item string) bool {
 	for _, s := range slice {
-		if strings.Compare(s, item) == 0 {
+		if s == item {
 			return true
 		}
 	}
