@@ -236,19 +236,48 @@ func ClassifyFileByExtension(ext string) string {
 	return "other"
 }
 
-// ValidateFilePath validates and normalizes a file path for processing.
+// ValidateFilePath validates and normalizes a file path for processing (reading).
+// It detects path traversal attempts by checking if the normalized path
+// would escape the current directory (contains ".." components).
+// Paths like "./test/../main.go" that normalize cleanly are allowed.
+// Paths like "../../../etc/passwd" that escape upward are rejected.
+// For stricter validation on write operations, use ValidateOutputPath.
 func ValidateFilePath(path string) (string, bool) {
 	if path == "" {
 		return "", false
 	}
 
-	// Clean the path to remove redundant elements
+	// Clean the path to normalize redundant elements
 	cleaned := filepath.Clean(path)
 
-	// Check for invalid characters or patterns
+	// After cleaning, if path still contains "..", it's escaping the current directory
+	// Example: "../../../etc/passwd" cleans to "../../../etc/passwd" → rejected
+	// Example: "./test/../main.go" cleans to "main.go" → allowed
 	if strings.Contains(cleaned, "..") {
+		return "", false // Path traversal attempt - escapes current directory
+	}
+
+	return cleaned, true
+}
+
+// ValidateOutputPath validates a path for file write operations.
+// This is stricter than ValidateFilePath - it rejects ANY path containing ".."
+// to prevent path traversal attacks in output file names.
+// Use this for validating user-provided output paths before writing files.
+func ValidateOutputPath(path string) (string, bool) {
+	if path == "" {
+		return "", false
+	}
+
+	// Reject any path containing ".." BEFORE cleaning
+	// This prevents attacks like "/tmp/foo/../../../etc/passwd" which would
+	// clean to "/etc/passwd" and bypass a post-clean check
+	if strings.Contains(path, "..") {
 		return "", false // Path traversal attempt
 	}
+
+	// Clean the path for normalization
+	cleaned := filepath.Clean(path)
 
 	return cleaned, true
 }

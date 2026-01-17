@@ -117,6 +117,22 @@ func TestSaveToFile(t *testing.T) {
 			cleanFunc:  func() {},
 			wantErr:    false,
 		},
+		{
+			name:       "Path traversal attack - rejected",
+			content:    "Malicious content",
+			outputFile: tempDir + "/../../etc/evil.txt", // Direct string to preserve ..
+			setupFunc:  func() {},
+			cleanFunc:  func() {},
+			wantErr:    true,
+		},
+		{
+			name:       "Path traversal in middle - rejected",
+			content:    "Malicious content",
+			outputFile: tempDir + "/subdir/../../../evil.txt", // Direct string to preserve ..
+			setupFunc:  func() {},
+			cleanFunc:  func() {},
+			wantErr:    true,
+		},
 	}
 
 	// Run tests

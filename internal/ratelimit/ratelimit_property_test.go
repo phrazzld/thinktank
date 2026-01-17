@@ -241,6 +241,7 @@ func executeStressTestOperations(rl *RateLimiter, ops []ConcurrentOperation, tim
 // verifySemaphoreResourceAccounting verifies resource accounting properties
 func verifySemaphoreResourceAccounting(ops []ConcurrentOperation) bool {
 	const capacity = 3
+	const timeout = 100 * time.Millisecond // Per-operation timeout to prevent blocking
 	sem := NewSemaphore(capacity)
 	if sem == nil {
 		return true
@@ -249,7 +250,10 @@ func verifySemaphoreResourceAccounting(ops []ConcurrentOperation) bool {
 	var acquireCount, releaseCount int32
 	var wg sync.WaitGroup
 
-	ctx := context.Background()
+	// Total timeout for all operations
+	totalTimeout := timeout*time.Duration(len(ops)+1) + time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), totalTimeout)
+	defer cancel()
 
 	// Execute operations and count successful acquires/releases
 	for _, op := range ops {
@@ -261,6 +265,7 @@ func verifySemaphoreResourceAccounting(ops []ConcurrentOperation) bool {
 
 			switch operation.Type {
 			case "acquire":
+				// Use context with timeout to prevent indefinite blocking
 				if err := sem.Acquire(ctx); err == nil {
 					atomic.AddInt32(&acquireCount, 1)
 				}
@@ -272,11 +277,21 @@ func verifySemaphoreResourceAccounting(ops []ConcurrentOperation) bool {
 		}(op)
 	}
 
-	wg.Wait()
+	// Wait with timeout
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
 
-	// Property: We should never release more resources than we acquired
-	// Note: Due to the semaphore's safety mechanism, excess releases are ignored
-	return true // The semaphore itself enforces this property through its design
+	select {
+	case <-done:
+		// Property: We should never release more resources than we acquired
+		// Note: Due to the semaphore's safety mechanism, excess releases are ignored
+		return true // The semaphore itself enforces this property through its design
+	case <-ctx.Done():
+		return false // Timed out - treat as failure
+	}
 }
 
 // ConcurrentOperation represents a single operation in a concurrent test sequence

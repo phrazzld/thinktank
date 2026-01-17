@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
+	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
@@ -53,67 +54,68 @@ func (fw *fileWriter) SaveToFile(ctx context.Context, content, outputFile string
 	}
 
 	// Ensure output path is absolute
-	outputPath := outputFile
-	if !filepath.IsAbs(outputPath) {
-		cwd, err := os.Getwd()
-		if err != nil {
-			fw.logger.Error("Error getting current working directory: %v", err)
+	outputPath, err := fw.resolveAbsolutePath(outputFile)
+	if err != nil {
+		fw.logger.Error("Error getting current working directory: %v", err)
+		fw.logFailure(ctx, saveStartTime, inputs, err)
+		return fmt.Errorf("error getting current working directory: %w", err)
+	}
 
-			// Log failure to save output
-			saveDurationMs := time.Since(saveStartTime).Milliseconds()
-			inputs["duration_ms"] = saveDurationMs
-			if logErr := fw.auditLogger.LogOp(ctx, "SaveOutput", "Failure", inputs, nil, err); logErr != nil {
-				fw.logger.Error("Failed to write audit log: %v", logErr)
-			}
-
-			return fmt.Errorf("error getting current working directory: %w", err)
-		}
-		outputPath = filepath.Join(cwd, outputPath)
+	// Validate path before any filesystem operations to prevent path traversal attacks
+	if _, valid := fileutil.ValidateOutputPath(outputPath); !valid {
+		pathErr := fmt.Errorf("invalid output path: path traversal detected: %s", outputPath)
+		fw.logger.Error("Security: %v", pathErr)
+		fw.logFailure(ctx, saveStartTime, inputs, pathErr)
+		return pathErr
 	}
 
 	// Ensure the output directory exists
 	outputDir := filepath.Dir(outputPath)
 	if err := os.MkdirAll(outputDir, fw.dirPermissions); err != nil {
 		fw.logger.Error("Error creating output directory %s: %v", outputDir, err)
-
-		// Log failure to save output
-		saveDurationMs := time.Since(saveStartTime).Milliseconds()
-		inputs["duration_ms"] = saveDurationMs
-		if logErr := fw.auditLogger.LogOp(ctx, "SaveOutput", "Failure", inputs, nil, err); logErr != nil {
-			fw.logger.Error("Failed to write audit log: %v", logErr)
-		}
-
+		fw.logFailure(ctx, saveStartTime, inputs, err)
 		return fmt.Errorf("error creating output directory %s: %w", outputDir, err)
 	}
 
 	// Write to file
 	fw.logger.Info("Writing to file %s...", outputPath)
-	err := os.WriteFile(outputPath, []byte(content), fw.filePermissions)
-
-	// Calculate duration in milliseconds
-	saveDurationMs := time.Since(saveStartTime).Milliseconds()
-
-	if err != nil {
+	if err := os.WriteFile(outputPath, []byte(content), fw.filePermissions); err != nil {
 		fw.logger.Error("Error writing to file %s: %v", outputPath, err)
-
-		// Log failure to save output
-		inputs["duration_ms"] = saveDurationMs
-		if logErr := fw.auditLogger.LogOp(ctx, "SaveOutput", "Failure", inputs, nil, err); logErr != nil {
-			fw.logger.Error("Failed to write audit log: %v", logErr)
-		}
-
+		fw.logFailure(ctx, saveStartTime, inputs, err)
 		return fmt.Errorf("error writing to file %s: %w", outputPath, err)
 	}
 
-	// Log successful saving of output
-	inputs["duration_ms"] = saveDurationMs
-	outputs := map[string]interface{}{
-		"content_length": len(content),
+	// Log successful save
+	fw.logSuccess(ctx, saveStartTime, inputs, len(content))
+	fw.logger.Info("Successfully saved to %s", outputPath)
+	return nil
+}
+
+// resolveAbsolutePath converts a path to absolute, returning the path unchanged if already absolute.
+func (fw *fileWriter) resolveAbsolutePath(path string) (string, error) {
+	if filepath.IsAbs(path) {
+		return path, nil
 	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(cwd, path), nil
+}
+
+// logFailure records a failed save operation to the audit log.
+func (fw *fileWriter) logFailure(ctx context.Context, startTime time.Time, inputs map[string]interface{}, err error) {
+	inputs["duration_ms"] = time.Since(startTime).Milliseconds()
+	if logErr := fw.auditLogger.LogOp(ctx, "SaveOutput", "Failure", inputs, nil, err); logErr != nil {
+		fw.logger.Error("Failed to write audit log: %v", logErr)
+	}
+}
+
+// logSuccess records a successful save operation to the audit log.
+func (fw *fileWriter) logSuccess(ctx context.Context, startTime time.Time, inputs map[string]interface{}, contentLength int) {
+	inputs["duration_ms"] = time.Since(startTime).Milliseconds()
+	outputs := map[string]interface{}{"content_length": contentLength}
 	if logErr := fw.auditLogger.LogOp(ctx, "SaveOutput", "Success", inputs, outputs, nil); logErr != nil {
 		fw.logger.Error("Failed to write audit log: %v", logErr)
 	}
-
-	fw.logger.Info("Successfully saved to %s", outputPath)
-	return nil
 }

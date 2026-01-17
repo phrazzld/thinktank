@@ -724,3 +724,150 @@ func TestGitCachingLegacy(t *testing.T) {
 		_ = CheckGitRepoCached(tempDir)
 	})
 }
+
+func TestValidateFilePath(t *testing.T) {
+	tests := []struct {
+		name       string
+		path       string
+		wantValid  bool
+		wantResult string
+	}{
+		{
+			name:       "valid absolute path",
+			path:       "/tmp/output/file.txt",
+			wantValid:  true,
+			wantResult: "/tmp/output/file.txt",
+		},
+		{
+			name:       "valid relative path",
+			path:       "output/file.txt",
+			wantValid:  true,
+			wantResult: "output/file.txt",
+		},
+		{
+			name:       "path with ./",
+			path:       "./output/file.txt",
+			wantValid:  true,
+			wantResult: "output/file.txt", // filepath.Clean removes ./
+		},
+		{
+			name:       "path normalization with .. that stays within dir",
+			path:       "./test/../main.go",
+			wantValid:  true,
+			wantResult: "main.go", // normalizes to valid path
+		},
+		{
+			name:       "absolute path with .. that resolves cleanly",
+			path:       "/tmp/foo/../bar/file.txt",
+			wantValid:  true,
+			wantResult: "/tmp/bar/file.txt", // resolves without escaping
+		},
+		{
+			name:      "empty path",
+			path:      "",
+			wantValid: false,
+		},
+		{
+			name:      "path traversal - escapes upward",
+			path:      "../../../etc/passwd",
+			wantValid: false,
+		},
+		{
+			name:      "path traversal - just double dot",
+			path:      "..",
+			wantValid: false,
+		},
+		{
+			name:      "path traversal - starts with ..",
+			path:      "../file.txt",
+			wantValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, valid := ValidateFilePath(tt.path)
+			if valid != tt.wantValid {
+				t.Errorf("ValidateFilePath(%q) valid = %v, want %v", tt.path, valid, tt.wantValid)
+			}
+			if tt.wantValid && result != tt.wantResult {
+				t.Errorf("ValidateFilePath(%q) result = %q, want %q", tt.path, result, tt.wantResult)
+			}
+		})
+	}
+}
+
+func TestValidateOutputPath(t *testing.T) {
+	tests := []struct {
+		name       string
+		path       string
+		wantValid  bool
+		wantResult string
+	}{
+		{
+			name:       "valid absolute path",
+			path:       "/tmp/output/file.txt",
+			wantValid:  true,
+			wantResult: "/tmp/output/file.txt",
+		},
+		{
+			name:       "valid relative path",
+			path:       "output/file.txt",
+			wantValid:  true,
+			wantResult: "output/file.txt",
+		},
+		{
+			name:       "path with ./",
+			path:       "./output/file.txt",
+			wantValid:  true,
+			wantResult: "output/file.txt",
+		},
+		{
+			name:      "empty path",
+			path:      "",
+			wantValid: false,
+		},
+		{
+			name:      "path traversal - simple",
+			path:      "../../../etc/passwd",
+			wantValid: false,
+		},
+		{
+			name:      "path traversal - absolute with ..",
+			path:      "/tmp/foo/../../../etc/passwd",
+			wantValid: false,
+		},
+		{
+			name:      "path traversal - hidden in middle (strict rejection)",
+			path:      "/tmp/foo/../bar/file.txt",
+			wantValid: false, // Stricter than ValidateFilePath - rejects any ..
+		},
+		{
+			name:      "path traversal - normalization with .. (strict rejection)",
+			path:      "./test/../main.go",
+			wantValid: false, // Stricter than ValidateFilePath - rejects any ..
+		},
+		{
+			name:      "path traversal - just double dot",
+			path:      "..",
+			wantValid: false,
+		},
+		{
+			name:      "path traversal - starts with ..",
+			path:      "../file.txt",
+			wantValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, valid := ValidateOutputPath(tt.path)
+			if valid != tt.wantValid {
+				t.Errorf("ValidateOutputPath(%q) valid = %v, want %v", tt.path, valid, tt.wantValid)
+			}
+			if tt.wantValid && result != tt.wantResult {
+				t.Errorf("ValidateOutputPath(%q) result = %q, want %q", tt.path, result, tt.wantResult)
+			}
+		})
+	}
+}

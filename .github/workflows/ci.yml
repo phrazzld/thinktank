@@ -4,6 +4,10 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
     steps:
     - uses: actions/checkout@v4
 
@@ -31,6 +35,12 @@ jobs:
         COVERAGE=$(go tool cover -func=coverage.out | awk '/total:/ {gsub(/%/,""); print int($3)}')
         echo "Coverage: ${COVERAGE}%"
         [ "$COVERAGE" -ge 79 ] || (echo "❌ Below 79% threshold" && exit 1)
+
+    - name: Coverage Report
+      uses: k1LoW/octocov-action@v1
+      if: always()
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build
       run: go build -v ./cmd/thinktank
