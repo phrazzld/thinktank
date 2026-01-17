@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/phrazzld/thinktank/internal/pathutil"
 	"golang.org/x/term"
 )
 
@@ -790,10 +791,10 @@ func (c *consoleWriter) ShowSummarySection(summary SummaryData) {
 			statusText)
 	}
 
-	// Show output directory
+	// Show output directory (sanitized to prevent leaking absolute paths)
 	WriteToConsoleF("%s Output directory: %s\n",
 		c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
-		c.colors.ColorFilePath(summary.OutputDirectory))
+		c.colors.ColorFilePath(pathutil.SanitizePathForDisplay(summary.OutputDirectory)))
 
 	// Add contextual messaging and guidance based on scenarios
 	c.displayScenarioGuidance(summary)
