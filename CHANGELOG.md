@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.2](https://github.com/phrazzld/thinktank/compare/v2.4.1...v2.4.2) (2026-01-17)
+
+
+### Bug Fixes
+
+* **ux:** sanitize display paths to prevent absolute path leaks ([#122](https://github.com/phrazzld/thinktank/issues/122)) ([#169](https://github.com/phrazzld/thinktank/issues/169)) ([e7558a5](https://github.com/phrazzld/thinktank/commit/e7558a53d47ee02ccb521c48eb53b30a07498bff))
+
 ## [2.4.1](https://github.com/phrazzld/thinktank/compare/v2.4.0...v2.4.1) (2026-01-17)
 
 
