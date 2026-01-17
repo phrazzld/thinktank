@@ -277,10 +277,10 @@ func TestModernConsoleWriter_SummaryFormatting(t *testing.T) {
 		"───────",              // Separator line
 		"* 4 models processed", // ASCII bullet point with stats
 		"* 3 successful, 1 failed",
-		"* Synthesis: [OK] completed", // ASCII success symbol
-		"* Output directory: /tmp/thinktank-output",
-		"[!] Partial success", // ASCII warning symbol for partial success
-		"* Success rate: 75%", // Success rate calculation
+		"* Synthesis: [OK] completed",            // ASCII success symbol
+		"* Output directory: ./thinktank-output", // Sanitized to relative path
+		"[!] Partial success",                    // ASCII warning symbol for partial success
+		"* Success rate: 75%",                    // Success rate calculation
 	}
 
 	for _, element := range expectedElements {

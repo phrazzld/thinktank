@@ -17,6 +17,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/models"
+	"github.com/phrazzld/thinktank/internal/pathutil"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
 	"github.com/phrazzld/thinktank/internal/thinktank"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
@@ -381,7 +382,7 @@ func runDryRun(ctx context.Context, cfg *config.MinimalConfig, instructions stri
 		fmt.Printf("Instructions file: %s\n", cfg.InstructionsFile)
 		fmt.Printf("Target paths: %v\n", cfg.TargetPaths)
 		fmt.Printf("Models: %v\n", cfg.ModelNames)
-		fmt.Printf("Output directory: %s\n", cfg.OutputDir)
+		fmt.Printf("Output directory: %s\n", pathutil.SanitizePathForDisplay(cfg.OutputDir))
 
 		// Show tokenizer status as requested in TODO Phase 6.1
 		availableProviders := models.GetAvailableProviders()
