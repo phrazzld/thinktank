@@ -2,6 +2,7 @@ package fileutil
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -22,7 +23,6 @@ func TestNewDefaultConcurrentConfig(t *testing.T) {
 	assert.Equal(t, ctx, cfg.Context)
 	assert.GreaterOrEqual(t, cfg.MaxWorkers, 1)
 	assert.LessOrEqual(t, cfg.MaxWorkers, 32)
-	assert.Equal(t, 15, cfg.BatchSize)
 }
 
 func TestNormalizeWorkers(t *testing.T) {
@@ -152,7 +152,6 @@ func TestGatherProjectContextConcurrent_SingleWorker(t *testing.T) {
 	config := NewConfig(false, "", "", "", "", testutil.NewMockLogger())
 	concCfg := &ConcurrentConfig{
 		MaxWorkers: 1, // Single worker mode
-		BatchSize:  15,
 		Context:    ctx,
 	}
 
@@ -249,7 +248,6 @@ func TestGatherProjectContextConcurrent_ProgressReporting(t *testing.T) {
 	progressChan := make(chan FileProgress, 100)
 	concCfg := &ConcurrentConfig{
 		MaxWorkers:   2,
-		BatchSize:    15,
 		Context:      ctx,
 		ProgressChan: progressChan,
 	}
@@ -341,11 +339,10 @@ func TestGatherProjectContextConcurrent_ExcludeFilter(t *testing.T) {
 	assert.Contains(t, files[0].Path, "main.go")
 }
 
-func TestConcurrentVsSequentialParity(t *testing.T) {
-	// This test verifies that concurrent and sequential produce same results
+func TestGatherProjectContextConcurrent_NestedDirectories(t *testing.T) {
+	// Verifies correct behavior with realistic nested directory structure
 	tmpDir := t.TempDir()
 
-	// Create a realistic directory structure
 	files := map[string]string{
 		"main.go":          "package main\n\nimport \"fmt\"\n\nfunc main() { fmt.Println(\"hello\") }\n",
 		"util/helper.go":   "package util\n\nfunc Helper() {}\n",
@@ -361,19 +358,17 @@ func TestConcurrentVsSequentialParity(t *testing.T) {
 
 	ctx := context.Background()
 	config := NewConfig(false, "", "", "", "", testutil.NewMockLogger())
-
-	// Run concurrent version
 	concCfg := NewDefaultConcurrentConfig(ctx)
-	concFiles, concCount, concErr := GatherProjectContextConcurrent(ctx, []string{tmpDir}, config, concCfg)
 
-	// Both should succeed
-	assert.NoError(t, concErr)
-	assert.Equal(t, 4, concCount)
-	assert.Len(t, concFiles, 4)
+	result, count, err := GatherProjectContextConcurrent(ctx, []string{tmpDir}, config, concCfg)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 4, count)
+	assert.Len(t, result, 4)
 
 	// Verify all expected files are present
 	pathSet := make(map[string]bool)
-	for _, f := range concFiles {
+	for _, f := range result {
 		pathSet[filepath.Base(f.Path)] = true
 	}
 	assert.True(t, pathSet["main.go"])
@@ -392,7 +387,6 @@ func BenchmarkGatherSequential(b *testing.B) {
 		ctx := context.Background()
 		concCfg := &ConcurrentConfig{
 			MaxWorkers: 1, // Single worker = sequential
-			BatchSize:  15,
 			Context:    ctx,
 		}
 		_, _, _ = GatherProjectContextConcurrent(ctx, []string{tmpDir}, config, concCfg)
@@ -418,12 +412,11 @@ func BenchmarkGatherByWorkerCount(b *testing.B) {
 	config := NewConfig(false, "", "", "", "", testutil.NewMockLogger())
 
 	for _, workers := range []int{1, 2, 4, 8, 16} {
-		b.Run("workers="+string(rune('0'+workers)), func(b *testing.B) {
+		b.Run(fmt.Sprintf("workers=%d", workers), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				ctx := context.Background()
 				concCfg := &ConcurrentConfig{
 					MaxWorkers: workers,
-					BatchSize:  15,
 					Context:    ctx,
 				}
 				_, _, _ = GatherProjectContextConcurrent(ctx, []string{tmpDir}, config, concCfg)

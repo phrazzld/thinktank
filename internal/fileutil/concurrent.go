@@ -17,10 +17,6 @@ type ConcurrentConfig struct {
 	// Default: runtime.GOMAXPROCS(0). Range: 1-32.
 	MaxWorkers int
 
-	// BatchSize specifies how many files to buffer between stages.
-	// Default: 15. Range: 1-100.
-	BatchSize int
-
 	// Context for cancellation propagation
 	Context context.Context
 
@@ -58,16 +54,8 @@ type readResult struct {
 
 // NewDefaultConcurrentConfig creates a ConcurrentConfig with sensible defaults
 func NewDefaultConcurrentConfig(ctx context.Context) *ConcurrentConfig {
-	workers := runtime.GOMAXPROCS(0)
-	if workers > 32 {
-		workers = 32
-	}
-	if workers < 1 {
-		workers = 1
-	}
 	return &ConcurrentConfig{
-		MaxWorkers: workers,
-		BatchSize:  15,
+		MaxWorkers: normalizeWorkers(0),
 		Context:    ctx,
 	}
 }
