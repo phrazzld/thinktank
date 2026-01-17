@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.1](https://github.com/phrazzld/thinktank/compare/v2.4.0...v2.4.1) (2026-01-17)
+
+
+### Bug Fixes
+
+* **security:** add path traversal validation for file writes ([#167](https://github.com/phrazzld/thinktank/issues/167)) ([e47c87d](https://github.com/phrazzld/thinktank/commit/e47c87d4d98d6bdeb1ca25651b94a8ea2308d46e))
+
 ## [2.4.0](https://github.com/phrazzld/thinktank/compare/v2.3.0...v2.4.0) (2026-01-17)
 
 
