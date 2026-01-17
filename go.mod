@@ -5,8 +5,8 @@ go 1.24.11
 require (
 	github.com/google/uuid v1.6.0
 	github.com/leanovate/gopter v0.2.11
-	github.com/pkoukk/tiktoken-go v0.1.7
-	github.com/stretchr/testify v1.10.0
+	github.com/pkoukk/tiktoken-go v0.1.8
+	github.com/stretchr/testify v1.11.1
 	golang.org/x/term v0.32.0
 	golang.org/x/time v0.12.0
 )
