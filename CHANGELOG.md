@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.3.0](https://github.com/phrazzld/thinktank/compare/v2.2.0...v2.3.0) (2026-01-17)
+
+
+### Features
+
+* **ci:** add automatic PR size labeling workflow ([#163](https://github.com/phrazzld/thinktank/issues/163)) ([a2db6ee](https://github.com/phrazzld/thinktank/commit/a2db6ee924ff27c1e4a8b91a7a468896cdc8e268)), closes [#151](https://github.com/phrazzld/thinktank/issues/151)
+* **security:** add gitleaks pre-commit secrets scanning ([#161](https://github.com/phrazzld/thinktank/issues/161)) ([10d05c5](https://github.com/phrazzld/thinktank/commit/10d05c523b0ef4f2acfb52e022047f0dc687528f)), closes [#152](https://github.com/phrazzld/thinktank/issues/152)
+
 ## [2.2.0](https://github.com/phrazzld/thinktank/compare/v2.1.0...v2.2.0) (2026-01-16)
 
 
