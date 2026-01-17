@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.0](https://github.com/phrazzld/thinktank/compare/v2.3.0...v2.4.0) (2026-01-17)
+
+
+### Features
+
+* **fileutil:** implement concurrent file processing pipeline ([#137](https://github.com/phrazzld/thinktank/issues/137)) ([#165](https://github.com/phrazzld/thinktank/issues/165)) ([9be7631](https://github.com/phrazzld/thinktank/commit/9be76318624e47f0783540cad2b4500e43bb506e))
+
 ## [2.3.0](https://github.com/phrazzld/thinktank/compare/v2.2.0...v2.3.0) (2026-01-17)
 
 
