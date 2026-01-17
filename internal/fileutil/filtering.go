@@ -424,6 +424,17 @@ func GetAbsolutePath(path string) (string, error) {
 	return filepath.Abs(path)
 }
 
+// EnsureAbsolutePath returns an absolute path, falling back to original if conversion fails.
+func EnsureAbsolutePath(path string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+	if abs, err := filepath.Abs(path); err == nil {
+		return abs
+	}
+	return path
+}
+
 // CheckGitRepo checks if a directory is inside a git repository.
 // This is a pure I/O operation for git repository detection.
 func CheckGitRepo(dir string) bool {

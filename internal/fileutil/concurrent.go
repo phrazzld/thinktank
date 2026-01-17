@@ -72,18 +72,12 @@ func NewDefaultConcurrentConfig(ctx context.Context) *ConcurrentConfig {
 	}
 }
 
-// normalizeWorkers ensures workers is within valid range
+// normalizeWorkers ensures workers is within valid range [1, 32]
 func normalizeWorkers(workers int) int {
 	if workers <= 0 {
 		workers = runtime.GOMAXPROCS(0)
 	}
-	if workers > 32 {
-		workers = 32
-	}
-	if workers < 1 {
-		workers = 1
-	}
-	return workers
+	return max(1, min(workers, 32))
 }
 
 // GatherProjectContextConcurrent walks paths and gathers files using concurrent processing.
@@ -126,9 +120,8 @@ func GatherProjectContextConcurrent(ctx context.Context, paths []string, config 
 	go filterFiles(ctx, discoverChan, config, workers, filterChan, &totalSkipped)
 	go readFiles(ctx, filterChan, config, workers, readChan, &totalSkipped)
 
-	// Collect results from the final stage
+	// Collect results from the final stage (sequential - no mutex needed)
 	var files []FileMeta
-	var mu sync.Mutex
 
 	for result := range readChan {
 		if result.err != nil {
@@ -137,9 +130,7 @@ func GatherProjectContextConcurrent(ctx context.Context, paths []string, config 
 			continue
 		}
 
-		mu.Lock()
 		files = append(files, result.meta)
-		mu.Unlock()
 
 		totalProcessed.Add(1)
 
@@ -361,17 +352,9 @@ func readFiles(ctx context.Context, filtered <-chan filterResult, config *Config
 					continue
 				}
 
-				// Convert to absolute path
-				absPath := item.path
-				if !filepath.IsAbs(item.path) {
-					if abs, err := GetAbsolutePath(item.path); err == nil {
-						absPath = abs
-					}
-				}
-
 				select {
 				case results <- readResult{
-					meta: FileMeta{Path: absPath, Content: string(content)},
+					meta: FileMeta{Path: EnsureAbsolutePath(item.path), Content: string(content)},
 				}:
 				case <-ctx.Done():
 					return

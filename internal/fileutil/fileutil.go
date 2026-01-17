@@ -35,55 +35,52 @@ type Config struct {
 	fileCollector  func(path string) // Optional callback to collect processed file paths
 }
 
+// parseExtensions splits a comma-separated string and normalizes extensions (lowercase, with dot prefix)
+func parseExtensions(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	for i, ext := range parts {
+		ext = strings.TrimSpace(ext)
+		if !strings.HasPrefix(ext, ".") {
+			ext = "." + ext
+		}
+		parts[i] = strings.ToLower(ext)
+	}
+	return parts
+}
+
+// parseNames splits a comma-separated string and trims whitespace
+func parseNames(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	for i, name := range parts {
+		parts[i] = strings.TrimSpace(name)
+	}
+	return parts
+}
+
 // NewConfig creates a configuration with defaults.
 func NewConfig(verbose bool, include, exclude, excludeNames, format string, logger logutil.LoggerInterface) *Config {
-	// Check if git is available
 	_, gitErr := exec.LookPath("git")
-	gitAvailable := gitErr == nil
 
 	if logger == nil {
-		// Use the slog-based logger instead of the standard library logger
 		logger = logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel)
 	}
 
-	cfg := &Config{
+	return &Config{
 		Verbose:      verbose,
 		Format:       format,
 		Logger:       logger,
-		GitAvailable: gitAvailable,
+		GitAvailable: gitErr == nil,
 		GitChecker:   NewGitChecker(),
+		IncludeExts:  parseExtensions(include),
+		ExcludeExts:  parseExtensions(exclude),
+		ExcludeNames: parseNames(excludeNames),
 	}
-
-	// Process include/exclude extensions
-	if include != "" {
-		cfg.IncludeExts = strings.Split(include, ",")
-		for i, ext := range cfg.IncludeExts {
-			ext = strings.TrimSpace(ext)
-			if !strings.HasPrefix(ext, ".") {
-				ext = "." + ext
-			}
-			cfg.IncludeExts[i] = strings.ToLower(ext)
-		}
-	}
-	if exclude != "" {
-		cfg.ExcludeExts = strings.Split(exclude, ",")
-		for i, ext := range cfg.ExcludeExts {
-			ext = strings.TrimSpace(ext)
-			if !strings.HasPrefix(ext, ".") {
-				ext = "." + ext
-			}
-			cfg.ExcludeExts[i] = strings.ToLower(ext)
-		}
-	}
-	// Process exclude names
-	if excludeNames != "" {
-		cfg.ExcludeNames = strings.Split(excludeNames, ",")
-		for i, name := range cfg.ExcludeNames {
-			cfg.ExcludeNames[i] = strings.TrimSpace(name)
-		}
-	}
-
-	return cfg
 }
 
 // SetFileCollector sets a callback function that will be called for each processed file
@@ -151,45 +148,31 @@ func isWhitespace(b byte) bool {
 }
 
 // shouldProcess checks all filters for a given file path.
-// This function now uses the pure filtering logic and adds logging.
 func shouldProcess(path string, config *Config) bool {
 	base := filepath.Base(path)
 	ext := strings.ToLower(filepath.Ext(path))
 
 	// Check if explicitly excluded by name
-	if len(config.ExcludeNames) > 0 && slices.Contains(config.ExcludeNames, base) {
+	if slices.Contains(config.ExcludeNames, base) {
 		config.Logger.Printf("Verbose: Skipping excluded name: %s\n", path)
 		return false
 	}
 
 	// Check if gitignored or hidden (handles .git implicitly)
 	if isGitIgnored(path, config) {
-		return false // Logging done within isGitIgnored
+		return false
 	}
 
 	// Check include extensions (if specified)
-	if len(config.IncludeExts) > 0 {
-		included := false
-		for _, includeExt := range config.IncludeExts {
-			if ext == includeExt {
-				included = true
-				break
-			}
-		}
-		if !included {
-			config.Logger.Printf("Verbose: Skipping non-included extension: %s (%s)\n", path, ext)
-			return false
-		}
+	if len(config.IncludeExts) > 0 && !slices.Contains(config.IncludeExts, ext) {
+		config.Logger.Printf("Verbose: Skipping non-included extension: %s (%s)\n", path, ext)
+		return false
 	}
 
 	// Check exclude extensions
-	if len(config.ExcludeExts) > 0 {
-		for _, excludeExt := range config.ExcludeExts {
-			if ext == excludeExt {
-				config.Logger.Printf("Verbose: Skipping excluded extension: %s (%s)\n", path, ext)
-				return false
-			}
-		}
+	if slices.Contains(config.ExcludeExts, ext) {
+		config.Logger.Printf("Verbose: Skipping excluded extension: %s (%s)\n", path, ext)
+		return false
 	}
 
 	return true
@@ -225,20 +208,9 @@ func processFile(path string, files *[]FileMeta, config *Config) {
 		config.fileCollector(path)
 	}
 
-	// Convert to absolute path if it's not already
-	absPath := path
-	if !filepath.IsAbs(path) {
-		// If this fails, just use the original path
-		if abs, err := GetAbsolutePath(path); err == nil {
-			absPath = abs
-		} else {
-			config.Logger.Printf("Warning: Could not convert %s to absolute path: %v\n", path, err)
-		}
-	}
-
 	// Create a FileMeta and add it to the slice
 	*files = append(*files, FileMeta{
-		Path:    absPath,
+		Path:    EnsureAbsolutePath(path),
 		Content: string(content),
 	})
 }
