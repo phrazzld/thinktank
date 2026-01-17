@@ -1,4 +1,10 @@
 repos:
+# Secrets scanning - prevent accidental commits of API keys/tokens
+-   repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+    -   id: gitleaks
+
 # Basic file hygiene
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
