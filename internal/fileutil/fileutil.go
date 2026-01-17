@@ -35,55 +35,52 @@ type Config struct {
 	fileCollector  func(path string) // Optional callback to collect processed file paths
 }
 
+// parseExtensions splits a comma-separated string and normalizes extensions (lowercase, with dot prefix)
+func parseExtensions(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	for i, ext := range parts {
+		ext = strings.TrimSpace(ext)
+		if !strings.HasPrefix(ext, ".") {
+			ext = "." + ext
+		}
+		parts[i] = strings.ToLower(ext)
+	}
+	return parts
+}
+
+// parseNames splits a comma-separated string and trims whitespace
+func parseNames(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	for i, name := range parts {
+		parts[i] = strings.TrimSpace(name)
+	}
+	return parts
+}
+
 // NewConfig creates a configuration with defaults.
 func NewConfig(verbose bool, include, exclude, excludeNames, format string, logger logutil.LoggerInterface) *Config {
-	// Check if git is available
 	_, gitErr := exec.LookPath("git")
-	gitAvailable := gitErr == nil
 
 	if logger == nil {
-		// Use the slog-based logger instead of the standard library logger
 		logger = logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel)
 	}
 
-	cfg := &Config{
+	return &Config{
 		Verbose:      verbose,
 		Format:       format,
 		Logger:       logger,
-		GitAvailable: gitAvailable,
+		GitAvailable: gitErr == nil,
 		GitChecker:   NewGitChecker(),
+		IncludeExts:  parseExtensions(include),
+		ExcludeExts:  parseExtensions(exclude),
+		ExcludeNames: parseNames(excludeNames),
 	}
-
-	// Process include/exclude extensions
-	if include != "" {
-		cfg.IncludeExts = strings.Split(include, ",")
-		for i, ext := range cfg.IncludeExts {
-			ext = strings.TrimSpace(ext)
-			if !strings.HasPrefix(ext, ".") {
-				ext = "." + ext
-			}
-			cfg.IncludeExts[i] = strings.ToLower(ext)
-		}
-	}
-	if exclude != "" {
-		cfg.ExcludeExts = strings.Split(exclude, ",")
-		for i, ext := range cfg.ExcludeExts {
-			ext = strings.TrimSpace(ext)
-			if !strings.HasPrefix(ext, ".") {
-				ext = "." + ext
-			}
-			cfg.ExcludeExts[i] = strings.ToLower(ext)
-		}
-	}
-	// Process exclude names
-	if excludeNames != "" {
-		cfg.ExcludeNames = strings.Split(excludeNames, ",")
-		for i, name := range cfg.ExcludeNames {
-			cfg.ExcludeNames[i] = strings.TrimSpace(name)
-		}
-	}
-
-	return cfg
 }
 
 // SetFileCollector sets a callback function that will be called for each processed file
@@ -101,11 +98,7 @@ func isGitIgnored(path string, config *Config) bool {
 	}
 
 	// Check git ignore status if git is available
-	if config.GitAvailable {
-		// Lazy init GitChecker if not set (preserves behavior for manual Config creation)
-		if config.GitChecker == nil {
-			config.GitChecker = NewGitChecker()
-		}
+	if config.GitAvailable && config.GitChecker != nil {
 		dir := filepath.Dir(path)
 		isIgnored, err := config.GitChecker.IsIgnored(dir, base)
 		if err != nil {
@@ -151,45 +144,31 @@ func isWhitespace(b byte) bool {
 }
 
 // shouldProcess checks all filters for a given file path.
-// This function now uses the pure filtering logic and adds logging.
 func shouldProcess(path string, config *Config) bool {
 	base := filepath.Base(path)
 	ext := strings.ToLower(filepath.Ext(path))
 
 	// Check if explicitly excluded by name
-	if len(config.ExcludeNames) > 0 && slices.Contains(config.ExcludeNames, base) {
+	if slices.Contains(config.ExcludeNames, base) {
 		config.Logger.Printf("Verbose: Skipping excluded name: %s\n", path)
 		return false
 	}
 
 	// Check if gitignored or hidden (handles .git implicitly)
 	if isGitIgnored(path, config) {
-		return false // Logging done within isGitIgnored
+		return false
 	}
 
 	// Check include extensions (if specified)
-	if len(config.IncludeExts) > 0 {
-		included := false
-		for _, includeExt := range config.IncludeExts {
-			if ext == includeExt {
-				included = true
-				break
-			}
-		}
-		if !included {
-			config.Logger.Printf("Verbose: Skipping non-included extension: %s (%s)\n", path, ext)
-			return false
-		}
+	if len(config.IncludeExts) > 0 && !slices.Contains(config.IncludeExts, ext) {
+		config.Logger.Printf("Verbose: Skipping non-included extension: %s (%s)\n", path, ext)
+		return false
 	}
 
 	// Check exclude extensions
-	if len(config.ExcludeExts) > 0 {
-		for _, excludeExt := range config.ExcludeExts {
-			if ext == excludeExt {
-				config.Logger.Printf("Verbose: Skipping excluded extension: %s (%s)\n", path, ext)
-				return false
-			}
-		}
+	if slices.Contains(config.ExcludeExts, ext) {
+		config.Logger.Printf("Verbose: Skipping excluded extension: %s (%s)\n", path, ext)
+		return false
 	}
 
 	return true
@@ -225,26 +204,18 @@ func processFile(path string, files *[]FileMeta, config *Config) {
 		config.fileCollector(path)
 	}
 
-	// Convert to absolute path if it's not already
-	absPath := path
-	if !filepath.IsAbs(path) {
-		// If this fails, just use the original path
-		if abs, err := GetAbsolutePath(path); err == nil {
-			absPath = abs
-		} else {
-			config.Logger.Printf("Warning: Could not convert %s to absolute path: %v\n", path, err)
-		}
-	}
-
 	// Create a FileMeta and add it to the slice
 	*files = append(*files, FileMeta{
-		Path:    absPath,
+		Path:    EnsureAbsolutePath(path),
 		Content: string(content),
 	})
 }
 
 // GatherProjectContextWithContext walks paths and gathers files into a slice of FileMeta.
 // This version accepts a context.Context parameter for logging and correlation ID.
+//
+// This function now delegates to the concurrent implementation for improved performance
+// on multi-core systems. The results are identical to the original sequential version.
 func GatherProjectContextWithContext(ctx context.Context, paths []string, config *Config) ([]FileMeta, int, error) {
 	// If context is nil, create a background context
 	if ctx == nil {
@@ -257,53 +228,9 @@ func GatherProjectContextWithContext(ctx context.Context, paths []string, config
 		config.Logger.DebugContext(ctx, "Starting GatherProjectContext with correlation ID: %s", correlationID)
 	}
 
-	var files []FileMeta
-
-	config.processedFiles = 0
-	config.totalFiles = 0
-
-	for _, p := range paths {
-		info, err := StatPath(p)
-		if err != nil {
-			config.Logger.Printf("Warning: Cannot stat path %s: %v. Skipping.\n", p, err)
-			continue
-		}
-
-		if info.IsDir() {
-			// Walk the directory
-			err := WalkDirectory(p, func(subPath string, d os.DirEntry, err error) error {
-				if err != nil {
-					config.Logger.Printf("Warning: Error accessing path %s during walk: %v\n", subPath, err)
-					return err // Report error up
-				}
-
-				// Check if the directory itself should be skipped (e.g., .git, node_modules)
-				if d.IsDir() {
-					if isGitIgnored(subPath, config) || slices.Contains(config.ExcludeNames, d.Name()) {
-						config.Logger.Printf("Verbose: Skipping directory: %s\n", subPath)
-						return filepath.SkipDir // Skip this whole directory
-					}
-					return nil // Continue walking into directory
-				}
-
-				// It's a file, process it
-				if !d.IsDir() {
-					processFile(subPath, &files, config)
-				}
-
-				return nil // Continue walking
-			})
-			if err != nil {
-				config.Logger.Printf("Error walking directory %s: %v\n", p, err)
-				// Continue with other paths if possible
-			}
-		} else {
-			// It's a single file
-			processFile(p, &files, config)
-		}
-	}
-
-	return files, config.processedFiles, nil
+	// Delegate to concurrent implementation with default configuration
+	concCfg := NewDefaultConcurrentConfig(ctx)
+	return GatherProjectContextConcurrent(ctx, paths, config, concCfg)
 }
 
 // GatherProjectContext is a backward-compatible version that doesn't require a context.

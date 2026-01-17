@@ -418,50 +418,61 @@ func TestEmptyAndEdgeCases(t *testing.T) {
 	}
 }
 
-func TestFileOrderPreservation(t *testing.T) {
-	// This test verifies that when specific file paths are provided in a certain order,
-	// the order is preserved in the output FileMeta slice
+func TestFileOrderDeterministic(t *testing.T) {
+	// This test verifies that output is deterministic (sorted by path) regardless
+	// of input order. Concurrent processing doesn't preserve input order, but
+	// we guarantee deterministic sorted output for predictability.
 
 	testDir, cleanup := setupTestDir(t)
 	defer cleanup()
 
-	// Create a specific ordered list of files
-	orderedPaths := []string{
-		filepath.Join(testDir, "src/lib.go"),          // First
-		filepath.Join(testDir, "README.md"),           // Second
-		filepath.Join(testDir, "main.go"),             // Third
-		filepath.Join(testDir, "src/utils/helper.go"), // Fourth
+	// Create a specific list of files (order doesn't matter for concurrent processing)
+	inputPaths := []string{
+		filepath.Join(testDir, "src/lib.go"),
+		filepath.Join(testDir, "README.md"),
+		filepath.Join(testDir, "main.go"),
+		filepath.Join(testDir, "src/utils/helper.go"),
 	}
 
 	// Set up the config
 	logger := NewMockLogger()
 	config := NewConfig(true, "", "", "", "", logger)
 
-	// Gather context with our specific order
-	files, processedFiles, err := GatherProjectContext(orderedPaths, config)
+	// Gather context
+	files, processedFiles, err := GatherProjectContext(inputPaths, config)
 	if err != nil {
 		t.Fatalf("GatherProjectContext returned error: %v", err)
 	}
 
 	// Verify we got all the files
-	if processedFiles != len(orderedPaths) {
-		t.Fatalf("Expected %d processed files, got %d", len(orderedPaths), processedFiles)
+	if processedFiles != len(inputPaths) {
+		t.Fatalf("Expected %d processed files, got %d", len(inputPaths), processedFiles)
 	}
 
-	// Check that the order is preserved
-	for i, expectedPath := range orderedPaths {
-		if i >= len(files) {
-			t.Fatalf("Not enough files returned: got %d, expected at least %d", len(files), i+1)
+	// Verify output is sorted by path (deterministic order)
+	for i := 1; i < len(files); i++ {
+		if files[i-1].Path >= files[i].Path {
+			t.Errorf("Output not sorted: files[%d].Path=%s >= files[%d].Path=%s",
+				i-1, files[i-1].Path, i, files[i].Path)
 		}
+	}
 
-		// Get basename for easier comparison in error messages
-		expectedBase := filepath.Base(expectedPath)
-		actualBase := filepath.Base(files[i].Path)
-
-		// Check that the file at this position matches the expected file
-		if filepath.Base(files[i].Path) != filepath.Base(expectedPath) {
-			t.Errorf("Order not preserved: at position %d, expected %s but got %s",
-				i, expectedBase, actualBase)
+	// Verify all expected files are present
+	expectedBases := map[string]bool{
+		"lib.go":    false,
+		"README.md": false,
+		"main.go":   false,
+		"helper.go": false,
+	}
+	for _, f := range files {
+		base := filepath.Base(f.Path)
+		if _, ok := expectedBases[base]; ok {
+			expectedBases[base] = true
+		}
+	}
+	for base, found := range expectedBases {
+		if !found {
+			t.Errorf("Expected file %s not found in output", base)
 		}
 	}
 }
