@@ -245,6 +245,9 @@ func processFile(path string, files *[]FileMeta, config *Config) {
 
 // GatherProjectContextWithContext walks paths and gathers files into a slice of FileMeta.
 // This version accepts a context.Context parameter for logging and correlation ID.
+//
+// This function now delegates to the concurrent implementation for improved performance
+// on multi-core systems. The results are identical to the original sequential version.
 func GatherProjectContextWithContext(ctx context.Context, paths []string, config *Config) ([]FileMeta, int, error) {
 	// If context is nil, create a background context
 	if ctx == nil {
@@ -257,53 +260,9 @@ func GatherProjectContextWithContext(ctx context.Context, paths []string, config
 		config.Logger.DebugContext(ctx, "Starting GatherProjectContext with correlation ID: %s", correlationID)
 	}
 
-	var files []FileMeta
-
-	config.processedFiles = 0
-	config.totalFiles = 0
-
-	for _, p := range paths {
-		info, err := StatPath(p)
-		if err != nil {
-			config.Logger.Printf("Warning: Cannot stat path %s: %v. Skipping.\n", p, err)
-			continue
-		}
-
-		if info.IsDir() {
-			// Walk the directory
-			err := WalkDirectory(p, func(subPath string, d os.DirEntry, err error) error {
-				if err != nil {
-					config.Logger.Printf("Warning: Error accessing path %s during walk: %v\n", subPath, err)
-					return err // Report error up
-				}
-
-				// Check if the directory itself should be skipped (e.g., .git, node_modules)
-				if d.IsDir() {
-					if isGitIgnored(subPath, config) || slices.Contains(config.ExcludeNames, d.Name()) {
-						config.Logger.Printf("Verbose: Skipping directory: %s\n", subPath)
-						return filepath.SkipDir // Skip this whole directory
-					}
-					return nil // Continue walking into directory
-				}
-
-				// It's a file, process it
-				if !d.IsDir() {
-					processFile(subPath, &files, config)
-				}
-
-				return nil // Continue walking
-			})
-			if err != nil {
-				config.Logger.Printf("Error walking directory %s: %v\n", p, err)
-				// Continue with other paths if possible
-			}
-		} else {
-			// It's a single file
-			processFile(p, &files, config)
-		}
-	}
-
-	return files, config.processedFiles, nil
+	// Delegate to concurrent implementation with default configuration
+	concCfg := NewDefaultConcurrentConfig(ctx)
+	return GatherProjectContextConcurrent(ctx, paths, config, concCfg)
 }
 
 // GatherProjectContext is a backward-compatible version that doesn't require a context.
