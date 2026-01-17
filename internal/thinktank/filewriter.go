@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
+	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
@@ -84,6 +85,20 @@ func (fw *fileWriter) SaveToFile(ctx context.Context, content, outputFile string
 		}
 
 		return fmt.Errorf("error creating output directory %s: %w", outputDir, err)
+	}
+
+	// Validate path to prevent path traversal attacks
+	if _, valid := fileutil.ValidateOutputPath(outputPath); !valid {
+		pathErr := fmt.Errorf("invalid output path: potential path traversal detected: %s", outputPath)
+		fw.logger.Error("Security: %v", pathErr)
+
+		saveDurationMs := time.Since(saveStartTime).Milliseconds()
+		inputs["duration_ms"] = saveDurationMs
+		if logErr := fw.auditLogger.LogOp(ctx, "SaveOutput", "Failure", inputs, nil, pathErr); logErr != nil {
+			fw.logger.Error("Failed to write audit log: %v", logErr)
+		}
+
+		return pathErr
 	}
 
 	// Write to file
