@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.5.0](https://github.com/phrazzld/thinktank/compare/v2.4.2...v2.5.0) (2026-01-27)
+
+
+### Features
+
+* **cli:** add model suggestions to --model flag errors ([#175](https://github.com/phrazzld/thinktank/issues/175)) ([02cd427](https://github.com/phrazzld/thinktank/commit/02cd427fca4d7b4afb36668d12b9f9a55631750c)), closes [#129](https://github.com/phrazzld/thinktank/issues/129)
+* **security:** add govulncheck to CI security job ([#172](https://github.com/phrazzld/thinktank/issues/172)) ([22b7280](https://github.com/phrazzld/thinktank/commit/22b7280664fdf9d5f70d3763a0b9f96ad4a56a1d))
+
 ## [2.4.2](https://github.com/phrazzld/thinktank/compare/v2.4.1...v2.4.2) (2026-01-17)
 
 
