@@ -25,16 +25,29 @@ const (
 	OpenRouterAPIKeyEnvVar = "OPENROUTER_API_KEY"
 	DefaultFormat          = "<{path}>\n```\n{content}\n```\n</{path}>\n\n"
 
-	// Default rate limiting values
-	DefaultMaxConcurrentRequests      = 5  // Default maximum concurrent API requests
-	DefaultRateLimitRequestsPerMinute = 60 // Default requests per minute per model
+	// DefaultMaxConcurrentRequests limits parallel API calls to balance throughput
+	// against memory usage and rate limits. The value of 5 is a conservative
+	// sweet spot for most provider limits: higher values risk rate limit errors,
+	// while lower values leave throughput on the table.
+	DefaultMaxConcurrentRequests = 5
+	// DefaultRateLimitRequestsPerMinute caps requests per minute per model. The
+	// default of 60 matches the OpenRouter free tier limit and is conservative
+	// across API tiers. Users with higher tiers can raise this via --rate-limit.
+	DefaultRateLimitRequestsPerMinute = 60
 
-	// Default timeout value
-	DefaultTimeout = 10 * time.Minute // Default timeout for the entire operation
+	// DefaultTimeout bounds the entire operation. Large codebases can exceed five
+	// minutes, and slower deep-thinking models add more latency. Ten minutes
+	// covers network delays, rate limit waiting, and processing time.
+	DefaultTimeout = 10 * time.Minute
 
-	// Default permission values
-	DefaultDirPermissions  = 0750 // Default directory permissions (rwxr-x---)
-	DefaultFilePermissions = 0640 // Default file permissions (rw-r-----)
+	// DefaultDirPermissions sets created output directories to 0750. This is more
+	// restrictive than 0755: owner gets full access, group gets read/execute, and
+	// others get none. It helps avoid accidental exposure of sensitive analysis.
+	DefaultDirPermissions = 0750
+	// DefaultFilePermissions sets created files to 0640. This is more restrictive
+	// than 0644: owner can read/write, group can read, and others get none.
+	// Output files may include sensitive code snippets or analysis.
+	DefaultFilePermissions = 0640
 
 	// Default excludes for file extensions
 	DefaultExcludes = ".exe,.bin,.obj,.o,.a,.lib,.so,.dll,.dylib,.class,.jar,.pyc,.pyo,.pyd," +
@@ -195,7 +208,11 @@ func NewDefaultCliConfig() *CliConfig {
 		OpenAIRateLimit:     0,
 		GeminiRateLimit:     0,
 		OpenRouterRateLimit: 0,
-		TokenSafetyMargin:   10, // Default 10% safety margin
+		// TokenSafetyMargin reserves part of the context window for model output.
+		// A 10% margin reduces truncation risk when responses are long, while
+		// keeping most tokens available for input. Users can tune this via the
+		// --token-safety-margin flag when they need tighter or looser margins.
+		TokenSafetyMargin: 10,
 	}
 }
 
