@@ -137,12 +137,12 @@ TROUBLESHOOTING:
 EXIT CODES:
     0    Success - operation completed successfully
     1    Generic error - unexpected failure
-    2    Authentication error - invalid or missing API key
+    2    Authentication error - API rejected credentials
     3    Rate limit error - API rate limit exceeded
-    4    Invalid request - malformed arguments or invalid configuration
+    4    Invalid request - missing required arguments, invalid configuration, or validation failure
     5    Server error - API server returned an error
     6    Network error - connection failed or timed out
-    7    Input error - invalid instructions or target paths
+    7    Input error - content exceeds model context limits
     8    Content filtered - response blocked by safety filters
     9    Insufficient credits - API quota exceeded
     10   Cancelled - operation interrupted by user
