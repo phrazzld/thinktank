@@ -134,6 +134,19 @@ TROUBLESHOOTING:
         Consider analyzing specific subdirectories or using a model
         with a larger context window (gpt-5.2, gemini-3-flash).
 
+EXIT CODES:
+    0    Success - operation completed successfully
+    1    Generic error - unexpected failure
+    2    Authentication error - API rejected credentials
+    3    Rate limit error - API rate limit exceeded
+    4    Invalid request - missing required arguments, invalid configuration, or validation failure
+    5    Server error - API server returned an error
+    6    Network error - connection failed or timed out
+    7    Input error - content exceeds model context limits
+    8    Content filtered - response blocked by safety filters
+    9    Insufficient credits - API quota exceeded
+    10   Cancelled - operation interrupted by user
+
 MORE INFORMATION:
     Documentation: https://github.com/phrazzld/thinktank
     Report issues: https://github.com/phrazzld/thinktank/issues
