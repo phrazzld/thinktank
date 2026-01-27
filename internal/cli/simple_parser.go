@@ -6,6 +6,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/phrazzld/thinktank/internal/models"
 )
 
 // ParseSimpleArgs parses the simplified command line interface in O(n) time using os.Args.
@@ -82,7 +84,7 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 		case arg == "--model":
 			// --model flag requires a value
 			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--model flag requires a value")
+				return nil, fmt.Errorf("--model flag requires a value%s", getModelSuggestion())
 			}
 			i++ // Skip the model value - we use smart default in ToCliConfig()
 
@@ -110,7 +112,7 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 			// Handle --model=value format
 			value := strings.TrimPrefix(arg, "--model=")
 			if value == "" {
-				return nil, fmt.Errorf("--model flag requires a non-empty value")
+				return nil, fmt.Errorf("--model flag requires a non-empty value%s", getModelSuggestion())
 			}
 
 		case strings.HasPrefix(arg, "--output-dir="):
@@ -182,6 +184,21 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 	}
 
 	return config, nil
+}
+
+// getModelSuggestion returns a formatted suggestion of popular models
+func getModelSuggestion() string {
+	popularModels := models.GetCoreCouncilModels()
+	suggestion := "\n\nPopular models:\n"
+	limit := 5
+	if len(popularModels) < limit {
+		limit = len(popularModels)
+	}
+	for i := 0; i < limit; i++ {
+		suggestion += fmt.Sprintf("  - %s\n", popularModels[i])
+	}
+	suggestion += "\nSee available models at: https://openrouter.ai/models"
+	return suggestion
 }
 
 // SimpleParseResult represents the outcome of argument parsing with structured error handling
