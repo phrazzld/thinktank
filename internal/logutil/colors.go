@@ -87,11 +87,23 @@ func NewColorScheme(interactive bool) *ColorScheme {
 		}
 	}
 
-	// Interactive mode: force TrueColor profile to ensure colors work even in non-TTY
-	// This is important because we've already determined we want colors via our own detection
+	// Interactive mode: detect terminal capabilities
 	r := lipgloss.NewRenderer(os.Stdout)
-	r.SetColorProfile(termenv.TrueColor)
-	r.SetHasDarkBackground(true)
+	// Let termenv auto-detect the color profile instead of forcing TrueColor
+	// Only override if detection fails or returns Ascii in interactive mode
+	detectedProfile := termenv.NewOutput(os.Stdout).ColorProfile()
+	if detectedProfile == termenv.Ascii {
+		// We determined we're interactive via our own detection, so at minimum support ANSI
+		r.SetColorProfile(termenv.ANSI)
+	} else {
+		r.SetColorProfile(detectedProfile)
+	}
+	// Detect dark background if possible, default to true for most terminals
+	if output := termenv.NewOutput(os.Stdout); output.HasDarkBackground() {
+		r.SetHasDarkBackground(true)
+	} else {
+		r.SetHasDarkBackground(false)
+	}
 	modelName, success, warning, errorStyle, info, muted, sectionHeader, noStyle := createStylesForRenderer(r)
 
 	return &ColorScheme{
