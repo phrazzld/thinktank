@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
 	"golang.org/x/term"
 )
@@ -21,6 +23,7 @@ type StatusDisplay struct {
 	spinner       spinner.Model
 	spinnerTick   *time.Ticker
 	spinnerDone   chan struct{}
+	progress      progress.Model
 	mu            sync.Mutex // protect spinner state
 }
 
@@ -44,6 +47,8 @@ func NewStatusDisplay(isInteractive bool) *StatusDisplay {
 		display.spinner.Spinner = spinner.Dot
 		display.spinnerTick = time.NewTicker(100 * time.Millisecond)
 		display.spinnerDone = make(chan struct{})
+		display.progress = progress.New(progress.WithDefaultGradient())
+		display.progress.Width = progressWidth(width)
 		go display.runSpinnerTicker()
 	}
 	return display
@@ -101,6 +106,19 @@ func (d *StatusDisplay) RenderStatus(states []*ModelState, forceRefresh bool) {
 	for _, state := range states {
 		line := d.formatModelLine(state, totalModels)
 		fmt.Println(line)
+		lineCount++
+	}
+
+	completed, percent := d.calculateProgress(states, totalModels)
+	if d.isInteractive {
+		separator := strings.Repeat("─", d.terminalWidth)
+		fmt.Println(d.colors.ColorSeparator(separator))
+		d.progress.Width = progressWidth(d.terminalWidth)
+		fmt.Printf("Overall: %s\n", d.progress.ViewAs(percent))
+		lineCount += 2
+	} else {
+		percentText := fmt.Sprintf("%.0f%%", percent*100)
+		fmt.Printf("Overall: %s (%d/%d completed)\n", percentText, completed, totalModels)
 		lineCount++
 	}
 
@@ -244,4 +262,27 @@ func (d *StatusDisplay) getDisplayWidth(s string) int {
 	// Remove ANSI codes and return the length
 	cleaned := ansiRegex.ReplaceAllString(s, "")
 	return len(cleaned)
+}
+
+func (d *StatusDisplay) calculateProgress(states []*ModelState, totalModels int) (int, float64) {
+	if totalModels == 0 {
+		return 0, 0
+	}
+
+	completed := 0
+	for _, state := range states {
+		if state.Status == StatusCompleted || state.Status == StatusFailed {
+			completed++
+		}
+	}
+
+	return completed, float64(completed) / float64(totalModels)
+}
+
+func progressWidth(terminalWidth int) int {
+	width := terminalWidth - 15
+	if width < 1 {
+		return 1
+	}
+	return width
 }
