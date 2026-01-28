@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mattn/go-runewidth"
 	"github.com/phrazzld/thinktank/internal/pathutil"
 	"golang.org/x/term"
 )
@@ -1006,7 +1007,7 @@ func (c *consoleWriter) endMidSectionLocked() {
 
 func (c *consoleWriter) formatMidSectionLineLocked(label, status string) string {
 	prefix := "  " + label
-	padding := StandardSeparatorWidth - len(prefix) - len(stripANSI(status))
+	padding := StandardSeparatorWidth - runewidth.StringWidth(prefix) - runewidth.StringWidth(stripANSI(status))
 	if padding < 1 {
 		padding = 1
 	}

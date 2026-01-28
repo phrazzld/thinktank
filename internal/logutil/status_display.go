@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/mattn/go-runewidth"
 	"golang.org/x/term"
 )
 
@@ -103,7 +103,8 @@ func (d *StatusDisplay) Stop() {
 	close(done)
 }
 
-// RenderStatus displays the current status of all models
+// RenderStatus displays the current status of all models.
+// Caller is responsible for serialization (consoleWriter holds its own mutex).
 func (d *StatusDisplay) RenderStatus(states []*ModelState, forceRefresh bool) {
 	if d.isInteractive && d.lastLineCount > 0 && !forceRefresh {
 		// Move cursor up to overwrite previous status
@@ -117,7 +118,11 @@ func (d *StatusDisplay) RenderStatus(states []*ModelState, forceRefresh bool) {
 	// Render each model's status line
 	for _, state := range states {
 		line := d.formatModelLine(state, totalModels)
-		fmt.Printf("\033[2K%s\n", line)
+		if d.isInteractive {
+			fmt.Printf("\033[2K%s\n", line)
+		} else {
+			fmt.Println(line)
+		}
 		lineCount++
 	}
 
@@ -195,13 +200,22 @@ func truncateWithEllipsis(text string, maxWidth int) string {
 	if maxWidth <= 0 {
 		return ""
 	}
-	if len(text) <= maxWidth {
+	width := runewidth.StringWidth(text)
+	if width <= maxWidth {
 		return text
 	}
 	if maxWidth <= 3 {
 		return strings.Repeat(".", maxWidth)
 	}
-	return text[:maxWidth-3] + "..."
+	runes := []rune(text)
+	for len(runes) > 0 {
+		truncated := string(runes) + "..."
+		if runewidth.StringWidth(truncated) <= maxWidth {
+			return truncated
+		}
+		runes = runes[:len(runes)-1]
+	}
+	return strings.Repeat(".", maxWidth)
 }
 
 // formatIndicator creates a fixed-width leading indicator for the model state
@@ -276,7 +290,8 @@ func (d *StatusDisplay) RenderSummaryHeader(totalModels int) {
 	fmt.Printf("\nProcessing %d models...\n", totalModels)
 }
 
-// RenderCompletion displays final completion message and clears status area
+// RenderCompletion displays final completion message and clears status area.
+// Caller is responsible for serialization.
 func (d *StatusDisplay) RenderCompletion() {
 	d.Stop()
 	if d.isInteractive && d.lastLineCount > 0 {
@@ -291,7 +306,8 @@ func (d *StatusDisplay) RenderCompletion() {
 	fmt.Println() // Add spacing before next section
 }
 
-// RenderPeriodicUpdate renders status in CI mode with headers
+// RenderPeriodicUpdate renders status in CI mode with headers.
+// Caller is responsible for serialization. isInteractive is immutable after construction.
 func (d *StatusDisplay) RenderPeriodicUpdate(states []*ModelState, summary StatusSummary) {
 	if d.isInteractive {
 		return // Interactive mode uses real-time updates
@@ -341,11 +357,8 @@ func (d *StatusDisplay) CalculateLayout(states []*ModelState) {
 
 // getDisplayWidth calculates the actual display width of a string, excluding ANSI color codes
 func (d *StatusDisplay) getDisplayWidth(s string) int {
-	// Regular expression to match ANSI escape sequences
-	ansiRegex := regexp.MustCompile(`\x1b\[[0-9;]*m`)
-	// Remove ANSI codes and return the length
-	cleaned := ansiRegex.ReplaceAllString(s, "")
-	return len(cleaned)
+	cleaned := ansiPattern.ReplaceAllString(s, "")
+	return runewidth.StringWidth(cleaned)
 }
 
 func (d *StatusDisplay) calculateProgress(states []*ModelState, totalModels int) (int, float64) {
@@ -399,8 +412,16 @@ func (g *GridProgress) Render(percent float64) string {
 	}
 	empty := g.totalCells - filled
 
-	filledCells := strings.Repeat("█", filled)
-	emptyCells := strings.Repeat("░", empty)
+	// Use ASCII characters for non-interactive mode
+	filledChar := "█"
+	emptyChar := "░"
+	if g.colors == nil {
+		filledChar = "="
+		emptyChar = "-"
+	}
+
+	filledCells := strings.Repeat(filledChar, filled)
+	emptyCells := strings.Repeat(emptyChar, empty)
 
 	if g.colors != nil {
 		filledCells = g.colors.ApplyColor("#3B82F6", filledCells)
