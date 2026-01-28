@@ -188,6 +188,126 @@ When extracting functions, follow this proven pattern:
 4. **Test Extracted Functions**: Use table-driven tests for pure functions
 5. **Validate Behavior**: Ensure identical behavior post-refactoring
 
+## TUI/Terminal Output Patterns (Charmbracelet)
+
+### Unicode Width Calculation
+Use `runewidth.StringWidth()` for terminal alignment, not `len()`:
+```go
+// BAD - len() counts bytes, not display width
+padding := maxWidth - len(text)  // "✓" is 3 bytes but 1 column
+
+// GOOD - runewidth counts display columns
+import "github.com/mattn/go-runewidth"
+padding := maxWidth - runewidth.StringWidth(text)
+```
+
+### Adaptive Colors for Accessibility
+Always use different colors for light/dark backgrounds:
+```go
+// BAD - white on white = invisible
+lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#FFFFFF"}
+
+// GOOD - dark on light, light on dark
+lipgloss.AdaptiveColor{Light: "#1F2937", Dark: "#FFFFFF"}
+```
+
+### Terminal Color Detection
+Let termenv auto-detect; don't force TrueColor:
+```go
+// BAD - forces capability that may not exist
+r.SetColorProfile(termenv.TrueColor)
+r.SetHasDarkBackground(true)
+
+// GOOD - detect actual terminal capabilities
+detected := termenv.NewOutput(os.Stdout).ColorProfile()
+if detected == termenv.Ascii {
+    r.SetColorProfile(termenv.ANSI)  // Minimum fallback
+} else {
+    r.SetColorProfile(detected)
+}
+if output := termenv.NewOutput(os.Stdout); output.HasDarkBackground() {
+    r.SetHasDarkBackground(true)
+}
+```
+
+### Non-Interactive ASCII Fallback
+Provide ASCII alternatives for CI/log systems:
+```go
+if !isInteractive {
+    switch status {
+    case StatusCompleted: return "  v "   // Not "  ✓ "
+    case StatusFailed:    return "  x "   // Not "  ✗ "
+    case StatusWarning:   return "  ! "   // Not "  ⚠ "
+    default:              return "  . "   // Not "  … "
+    }
+}
+```
+
+### Goroutine Lifecycle in Tests
+Any struct spawning goroutines needs explicit cleanup:
+```go
+// In struct with spinner/ticker:
+func (d *Display) Stop() {
+    d.mu.Lock()
+    ticker := d.spinnerTick
+    done := d.spinnerDone
+    d.spinnerTick = nil
+    d.spinnerDone = nil
+    d.mu.Unlock()
+    if ticker != nil { ticker.Stop() }
+    if done != nil { close(done) }
+}
+
+// In tests - ALWAYS register cleanup:
+func TestDisplay(t *testing.T) {
+    display := NewDisplay(true)
+    t.Cleanup(display.Stop)  // Prevents goroutine leak
+    // ... test code
+}
+```
+
+### ColorScheme Nil and Enabled Checks
+Check both nil AND enabled flag:
+```go
+// BAD - nil check alone misses disabled schemes
+if colors != nil {
+    text = colors.ColorSuccess(text)
+}
+
+// GOOD - check both conditions
+if colors != nil && colors.enabled {
+    text = colors.ColorSuccess(text)
+}
+
+// Or use method that handles it internally:
+func (cs *ColorScheme) applyStyle(style lipgloss.Style, text string) string {
+    if !cs.enabled { return text }
+    return style.Render(text)
+}
+```
+
+### Caller-Owns-Serialization for Render Methods
+Avoid mutex deadlock in frequently-called render chains:
+```go
+// BAD - nested calls cause deadlock (Go mutexes aren't reentrant)
+func (d *Display) RenderStatus() {
+    d.mu.Lock()
+    defer d.mu.Unlock()
+    d.formatLine()  // calls formatIndicator() which also locks d.mu
+}
+
+// GOOD - caller owns serialization, render methods are lock-free
+func (d *Display) RenderStatus() {
+    // No mutex here - consoleWriter holds the lock
+    d.formatLine()
+}
+
+// Document the contract:
+// RenderStatus displays status. Caller is responsible for serialization
+// (consoleWriter holds its own mutex).
+func (d *Display) RenderStatus(states []*ModelState, forceRefresh bool) {
+```
+
 ## Reference
 
 * Architecture: `docs/leyline/` for development philosophy
