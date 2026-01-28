@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 	"golang.org/x/term"
 )
 
@@ -11,131 +13,161 @@ import (
 // It provides semantic color mapping for different types of output elements,
 // automatically adapting between interactive (colored) and CI (uncolored) environments.
 type ColorScheme struct {
-	ModelName     string // Subtle blue for model names
-	Success       string // Green for success indicators
-	Warning       string // Yellow for warning indicators
-	Error         string // Red for error indicators
-	Duration      string // Gray for timing information
-	FileSize      string // Gray for file size information
-	FilePath      string // Default/white for file paths
-	SectionHeader string // Bold white for section headers
-	Separator     string // Gray for section separators
-	Symbol        string // Default/white for Unicode symbols
-	Reset         string // Reset code to clear formatting
+	ModelName     lipgloss.Style     // Subtle blue for model names
+	Success       lipgloss.Style     // Green for success indicators
+	Warning       lipgloss.Style     // Yellow for warning indicators
+	Error         lipgloss.Style     // Red for error indicators
+	Duration      lipgloss.Style     // Gray for timing information
+	FileSize      lipgloss.Style     // Gray for file size information
+	FilePath      lipgloss.Style     // Default/white for file paths
+	SectionHeader lipgloss.Style     // Bold white for section headers
+	Separator     lipgloss.Style     // Gray for section separators
+	Symbol        lipgloss.Style     // Default/white for Unicode symbols
+	Reset         lipgloss.Style     // Reset style to clear formatting
+	enabled       bool               // Whether colors are active
+	renderer      *lipgloss.Renderer // Custom renderer for color output
 }
 
-// ANSI color codes for interactive terminals
-const (
-	// Foreground colors
-	ansiReset     = "\033[0m"
-	ansiBlue      = "\033[34m"   // ModelName - subtle blue
-	ansiGreen     = "\033[32m"   // Success - green
-	ansiYellow    = "\033[33m"   // Warning - yellow
-	ansiRed       = "\033[31m"   // Error - red
-	ansiGray      = "\033[90m"   // Duration, FileSize, Separator - gray
-	ansiDefault   = "\033[39m"   // FilePath, Symbol - default/white
-	ansiBoldWhite = "\033[1;37m" // SectionHeader - bold white
-)
+// createStylesForRenderer creates lipgloss styles bound to a specific renderer.
+// This ensures colors work even when running in non-TTY environments (like tests).
+func createStylesForRenderer(r *lipgloss.Renderer) (modelName, success, warning, errorStyle, muted, sectionHeader, noStyle lipgloss.Style) {
+	modelName = r.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#5B4FF3", Dark: "#7C6FFF"})
+	success = r.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#16A34A", Dark: "#22C55E"})
+	warning = r.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#D97706", Dark: "#FBBF24"})
+	errorStyle = r.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#DC2626", Dark: "#EF4444"})
+	muted = r.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#6B7280", Dark: "#9CA3AF"})
+	sectionHeader = r.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#FFFFFF"})
+	noStyle = r.NewStyle()
+	return
+}
 
 // NewColorScheme creates a new ColorScheme based on environment type.
-// If interactive is true, returns a scheme with ANSI color codes.
-// If interactive is false, returns a scheme with empty strings (no colors).
+// If interactive is true, returns a scheme with adaptive colors.
+// If interactive is false, returns a scheme with no colors.
 func NewColorScheme(interactive bool) *ColorScheme {
 	if !interactive {
-		// Non-interactive mode: no colors, only semantic meaning preserved
+		// Non-interactive mode: use ASCII profile (no colors)
+		r := lipgloss.NewRenderer(os.Stdout)
+		r.SetColorProfile(termenv.Ascii)
+		_, _, _, _, _, _, noStyle := createStylesForRenderer(r)
 		return &ColorScheme{
-			ModelName:     "",
-			Success:       "",
-			Warning:       "",
-			Error:         "",
-			Duration:      "",
-			FileSize:      "",
-			FilePath:      "",
-			SectionHeader: "",
-			Separator:     "",
-			Symbol:        "",
-			Reset:         "",
+			ModelName:     noStyle,
+			Success:       noStyle,
+			Warning:       noStyle,
+			Error:         noStyle,
+			Duration:      noStyle,
+			FileSize:      noStyle,
+			FilePath:      noStyle,
+			SectionHeader: noStyle,
+			Separator:     noStyle,
+			Symbol:        noStyle,
+			Reset:         noStyle,
+			enabled:       false,
+			renderer:      r,
 		}
 	}
 
-	// Interactive mode: full ANSI color support
+	// Interactive mode: force TrueColor profile to ensure colors work even in non-TTY
+	// This is important because we've already determined we want colors via our own detection
+	r := lipgloss.NewRenderer(os.Stdout)
+	r.SetColorProfile(termenv.TrueColor)
+	r.SetHasDarkBackground(true)
+	modelName, success, warning, errorStyle, muted, sectionHeader, noStyle := createStylesForRenderer(r)
+
 	return &ColorScheme{
-		ModelName:     ansiBlue,
-		Success:       ansiGreen,
-		Warning:       ansiYellow,
-		Error:         ansiRed,
-		Duration:      ansiGray,
-		FileSize:      ansiGray,
-		FilePath:      ansiGray, // Changed to gray for muted appearance
-		SectionHeader: ansiBoldWhite,
-		Separator:     ansiGray,
-		Symbol:        ansiBlue, // Changed to blue for bullet points
-		Reset:         ansiReset,
+		ModelName:     modelName,
+		Success:       success,
+		Warning:       warning,
+		Error:         errorStyle,
+		Duration:      muted,
+		FileSize:      muted,
+		FilePath:      muted, // Changed to gray for muted appearance
+		SectionHeader: sectionHeader,
+		Separator:     muted,
+		Symbol:        modelName, // Changed to blue for bullet points
+		Reset:         noStyle,
+		enabled:       true,
+		renderer:      r,
 	}
 }
 
 // ApplyColor applies the specified color to text if the scheme supports colors.
 // In non-interactive mode, returns the text unchanged.
-// In interactive mode, wraps text with color codes and reset.
+// In interactive mode, renders text with the requested style.
 func (cs *ColorScheme) ApplyColor(color, text string) string {
-	// If no color code or reset code, we're in non-interactive mode
-	if color == "" || cs.Reset == "" {
+	// If no color value or colors disabled, return text unchanged
+	if color == "" || !cs.enabled {
 		return text
 	}
 
-	return color + text + cs.Reset
+	style := cs.renderer.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: color, Dark: color})
+	return style.Render(text)
 }
 
 // Convenience methods for applying semantic colors
+func (cs *ColorScheme) applyStyle(style lipgloss.Style, text string) string {
+	if !cs.enabled {
+		return text
+	}
+	return style.Render(text)
+}
 
 // ModelName applies the model name color to text
 func (cs *ColorScheme) ColorModelName(text string) string {
-	return cs.ApplyColor(cs.ModelName, text)
+	return cs.applyStyle(cs.ModelName, text)
 }
 
 // Success applies the success color to text
 func (cs *ColorScheme) ColorSuccess(text string) string {
-	return cs.ApplyColor(cs.Success, text)
+	return cs.applyStyle(cs.Success, text)
 }
 
 // Warning applies the warning color to text
 func (cs *ColorScheme) ColorWarning(text string) string {
-	return cs.ApplyColor(cs.Warning, text)
+	return cs.applyStyle(cs.Warning, text)
 }
 
 // Error applies the error color to text
 func (cs *ColorScheme) ColorError(text string) string {
-	return cs.ApplyColor(cs.Error, text)
+	return cs.applyStyle(cs.Error, text)
 }
 
 // Duration applies the duration color to text
 func (cs *ColorScheme) ColorDuration(text string) string {
-	return cs.ApplyColor(cs.Duration, text)
+	return cs.applyStyle(cs.Duration, text)
 }
 
 // FileSize applies the file size color to text
 func (cs *ColorScheme) ColorFileSize(text string) string {
-	return cs.ApplyColor(cs.FileSize, text)
+	return cs.applyStyle(cs.FileSize, text)
 }
 
 // FilePath applies the file path color to text
 func (cs *ColorScheme) ColorFilePath(text string) string {
-	return cs.ApplyColor(cs.FilePath, text)
+	return cs.applyStyle(cs.FilePath, text)
 }
 
 // SectionHeader applies the section header color to text
 func (cs *ColorScheme) ColorSectionHeader(text string) string {
-	return cs.ApplyColor(cs.SectionHeader, text)
+	return cs.applyStyle(cs.SectionHeader, text)
 }
 
 // Separator applies the separator color to text
 func (cs *ColorScheme) ColorSeparator(text string) string {
-	return cs.ApplyColor(cs.Separator, text)
+	return cs.applyStyle(cs.Separator, text)
 }
 
 // Symbol applies the symbol color to text
 func (cs *ColorScheme) ColorSymbol(text string) string {
-	return cs.ApplyColor(cs.Symbol, text)
+	return cs.applyStyle(cs.Symbol, text)
 }
 
 // NewColorSchemeFromEnvironment creates a ColorScheme by detecting the current environment.

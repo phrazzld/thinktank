@@ -1,81 +1,63 @@
 package logutil
 
 import (
+	"strings"
 	"testing"
 )
 
 func TestNewColorScheme_Interactive(t *testing.T) {
 	scheme := NewColorScheme(true) // interactive = true
+	text := "test"
 
-	// Test that interactive scheme has ANSI color codes
-	if scheme.ModelName == "" {
-		t.Error("Expected ModelName to have color codes in interactive mode")
+	// Test that interactive scheme applies ANSI color codes
+	if !containsColorCode(scheme.ColorModelName(text)) {
+		t.Errorf("Expected ModelName to contain color codes, got %q", scheme.ColorModelName(text))
 	}
-	if scheme.Success == "" {
-		t.Error("Expected Success to have color codes in interactive mode")
+	if !containsColorCode(scheme.ColorSuccess(text)) {
+		t.Errorf("Expected Success to contain color codes, got %q", scheme.ColorSuccess(text))
 	}
-	if scheme.Error == "" {
-		t.Error("Expected Error to have color codes in interactive mode")
+	if !containsColorCode(scheme.ColorError(text)) {
+		t.Errorf("Expected Error to contain color codes, got %q", scheme.ColorError(text))
 	}
-	if scheme.Warning == "" {
-		t.Error("Expected Warning to have color codes in interactive mode")
-	}
-
-	// Test specific colors match specification
-	// ModelName should be subtle blue
-	if !containsColorCode(scheme.ModelName) {
-		t.Errorf("Expected ModelName to contain color codes, got %q", scheme.ModelName)
-	}
-
-	// Success should be green
-	if !containsColorCode(scheme.Success) {
-		t.Errorf("Expected Success to contain green color codes, got %q", scheme.Success)
-	}
-
-	// Error should be red
-	if !containsColorCode(scheme.Error) {
-		t.Errorf("Expected Error to contain red color codes, got %q", scheme.Error)
-	}
-
-	// Warning should be yellow
-	if !containsColorCode(scheme.Warning) {
-		t.Errorf("Expected Warning to contain yellow color codes, got %q", scheme.Warning)
+	if !containsColorCode(scheme.ColorWarning(text)) {
+		t.Errorf("Expected Warning to contain color codes, got %q", scheme.ColorWarning(text))
 	}
 }
 
 func TestNewColorScheme_NonInteractive(t *testing.T) {
 	scheme := NewColorScheme(false) // interactive = false
+	text := "test"
 
 	// Test that non-interactive scheme has no color codes
-	if scheme.ModelName != "" {
-		t.Errorf("Expected ModelName to be empty in non-interactive mode, got %q", scheme.ModelName)
+	if result := scheme.ColorModelName(text); result != text {
+		t.Errorf("Expected ModelName to be unchanged in non-interactive mode, got %q", result)
 	}
-	if scheme.Success != "" {
-		t.Errorf("Expected Success to be empty in non-interactive mode, got %q", scheme.Success)
+	if result := scheme.ColorSuccess(text); result != text {
+		t.Errorf("Expected Success to be unchanged in non-interactive mode, got %q", result)
 	}
-	if scheme.Error != "" {
-		t.Errorf("Expected Error to be empty in non-interactive mode, got %q", scheme.Error)
+	if result := scheme.ColorError(text); result != text {
+		t.Errorf("Expected Error to be unchanged in non-interactive mode, got %q", result)
 	}
-	if scheme.Warning != "" {
-		t.Errorf("Expected Warning to be empty in non-interactive mode, got %q", scheme.Warning)
+	if result := scheme.ColorWarning(text); result != text {
+		t.Errorf("Expected Warning to be unchanged in non-interactive mode, got %q", result)
 	}
-	if scheme.Duration != "" {
-		t.Errorf("Expected Duration to be empty in non-interactive mode, got %q", scheme.Duration)
+	if result := scheme.ColorDuration(text); result != text {
+		t.Errorf("Expected Duration to be unchanged in non-interactive mode, got %q", result)
 	}
-	if scheme.FileSize != "" {
-		t.Errorf("Expected FileSize to be empty in non-interactive mode, got %q", scheme.FileSize)
+	if result := scheme.ColorFileSize(text); result != text {
+		t.Errorf("Expected FileSize to be unchanged in non-interactive mode, got %q", result)
 	}
-	if scheme.FilePath != "" {
-		t.Errorf("Expected FilePath to be empty in non-interactive mode, got %q", scheme.FilePath)
+	if result := scheme.ColorFilePath(text); result != text {
+		t.Errorf("Expected FilePath to be unchanged in non-interactive mode, got %q", result)
 	}
-	if scheme.SectionHeader != "" {
-		t.Errorf("Expected SectionHeader to be empty in non-interactive mode, got %q", scheme.SectionHeader)
+	if result := scheme.ColorSectionHeader(text); result != text {
+		t.Errorf("Expected SectionHeader to be unchanged in non-interactive mode, got %q", result)
 	}
-	if scheme.Separator != "" {
-		t.Errorf("Expected Separator to be empty in non-interactive mode, got %q", scheme.Separator)
+	if result := scheme.ColorSeparator(text); result != text {
+		t.Errorf("Expected Separator to be unchanged in non-interactive mode, got %q", result)
 	}
-	if scheme.Symbol != "" {
-		t.Errorf("Expected Symbol to be empty in non-interactive mode, got %q", scheme.Symbol)
+	if result := scheme.ColorSymbol(text); result != text {
+		t.Errorf("Expected Symbol to be unchanged in non-interactive mode, got %q", result)
 	}
 }
 
@@ -87,10 +69,10 @@ func TestColorScheme_ApplyColor(t *testing.T) {
 		text        string
 		expectColor bool
 	}{
-		{"interactive with color", true, "\033[32m", "test", true},
+		{"interactive with color", true, "#22C55E", "test", true},
 		{"non-interactive no color", false, "", "test", false},
 		{"interactive empty color", true, "", "test", false},
-		{"non-interactive with color field", false, "\033[32m", "test", false}, // Should ignore color in non-interactive
+		{"non-interactive with color field", false, "#22C55E", "test", false}, // Should ignore color in non-interactive
 	}
 
 	for _, tt := range tests {
@@ -163,7 +145,7 @@ func TestDetectInteractiveEnvironmentForColors(t *testing.T) {
 
 // Helper function to check if a string contains ANSI color codes
 func containsColorCode(s string) bool {
-	return len(s) > 0 && (s[0] == '\033' || s[0] == '\x1b')
+	return strings.Contains(s, "\x1b[")
 }
 
 // TestNewColorSchemeFromEnvironment tests the NewColorSchemeFromEnvironment function
