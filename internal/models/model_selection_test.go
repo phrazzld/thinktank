@@ -29,7 +29,10 @@ func TestGetModelsWithMinContextWindow(t *testing.T) {
 				"gemini-3-pro",           // 1M
 				"claude-sonnet-4.5",      // 1M
 				"gpt-5.2",                // 400K
-				"kimi-k2-thinking",       // 262K
+				"gpt-5.2-codex",          // 400K
+				"openai/gpt-5.2-codex",   // 400K
+				"moonshotai/kimi-k2.5",   // 262K
+				"qwen/qwen3-coder",       // 262K
 				"devstral-2",             // 262K
 				"grok-code-fast-1",       // 256K
 				"glm-4.7",                // 202K
@@ -50,7 +53,10 @@ func TestGetModelsWithMinContextWindow(t *testing.T) {
 				"gemini-3-pro",
 				"claude-sonnet-4.5",
 				"gpt-5.2",
-				"kimi-k2-thinking",
+				"gpt-5.2-codex",
+				"openai/gpt-5.2-codex",
+				"moonshotai/kimi-k2.5",
+				"qwen/qwen3-coder",
 				"devstral-2",
 				"grok-code-fast-1",
 				"glm-4.7",
@@ -198,7 +204,10 @@ func TestSelectModelsForInput(t *testing.T) {
 				"gemini-3-pro",
 				"claude-sonnet-4.5",
 				"gpt-5.2",
-				"kimi-k2-thinking",
+				"gpt-5.2-codex",
+				"openai/gpt-5.2-codex",
+				"moonshotai/kimi-k2.5",
+				"qwen/qwen3-coder",
 				"devstral-2",
 				"grok-code-fast-1",
 				"glm-4.7",

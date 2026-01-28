@@ -52,12 +52,6 @@ func (o *Orchestrator) displayCompatibilityCard(analysis CompatibilityAnalysis) 
 	// Usage statistics - clean and readable
 	if analysis.TotalModels > 1 {
 		fmt.Printf("   Context usage range: %.1f%% - %.1f%%\n", analysis.MinUtilization, analysis.MaxUtilization)
-
-		// Show extremes only if there's meaningful difference
-		if analysis.MaxUtilization-analysis.MinUtilization > 10.0 {
-			fmt.Printf("   Best efficiency: %s (%.1f%%)\n", analysis.BestModel.ModelName, analysis.MinUtilization)
-			fmt.Printf("   Worst efficiency: %s (%.1f%%)\n", analysis.WorstModel.ModelName, analysis.MaxUtilization)
-		}
 	} else if len(analysis.AllModels) == 1 {
 		model := analysis.AllModels[0]
 		if model.ContextWindow > 0 {

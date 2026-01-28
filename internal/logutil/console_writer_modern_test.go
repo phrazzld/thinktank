@@ -273,14 +273,15 @@ func TestModernConsoleWriter_SummaryFormatting(t *testing.T) {
 
 	// Verify structured summary elements (using ASCII symbols for non-interactive mode)
 	expectedElements := []string{
-		"SUMMARY",              // Uppercase header
-		"───────",              // Separator line
-		"* 4 models processed", // ASCII bullet point with stats
-		"* 3 successful, 1 failed",
-		"* Synthesis: [OK] completed",            // ASCII success symbol
-		"* Output directory: ./thinktank-output", // Sanitized to relative path
-		"[!] Partial success",                    // ASCII warning symbol for partial success
-		"* Success rate: 75%",                    // Success rate calculation
+		"SUMMARY",                          // Uppercase header
+		"================================", // Separator line (ASCII)
+		"4 processed",                      // Models line
+		"o o o x",
+		"Synthesis",          // Synthesis status line
+		"[OK] completed",     // ASCII success symbol
+		"Output",             // Output line
+		"./thinktank-output", // Sanitized to relative path
+		"1 model failed - review errors above",
 	}
 
 	for _, element := range expectedElements {
@@ -532,11 +533,10 @@ func TestShowFileOperations(t *testing.T) {
 			expectOutput: true,
 		},
 		{
-			name:          "Saving operation adds newline",
-			message:       "Saving output to result.json",
-			quiet:         false,
-			expectOutput:  true,
-			expectNewline: true,
+			name:         "Saving operation suppressed",
+			message:      "Saving output to result.json",
+			quiet:        false,
+			expectOutput: false,
 		},
 		{
 			name:         "Quiet mode suppresses output",

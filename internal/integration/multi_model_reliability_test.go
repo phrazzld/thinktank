@@ -34,14 +34,14 @@ import (
 	"github.com/phrazzld/thinktank/internal/thinktank/orchestrator"
 )
 
-// TestMultiModelReliability_AllModelsBasic tests basic functionality with all 24 supported models
+// TestMultiModelReliability_AllModelsBasic tests basic functionality with all 21 supported models
 func TestMultiModelReliability_AllModelsBasic(t *testing.T) {
 	logger := logutil.NewTestLogger(t)
 
-	// Get all 19 supported models (15 production models + 4 test models = 19 total)
+	// Get all 21 supported models (17 production models + 4 test models = 21 total)
 	allModels := models.ListAllModels()
-	if len(allModels) != 18 {
-		t.Fatalf("Expected 18 models, got %d", len(allModels))
+	if len(allModels) != 21 {
+		t.Fatalf("Expected 21 models, got %d", len(allModels))
 	}
 
 	// Create test environment
@@ -453,7 +453,7 @@ func TestMultiModelReliability_ResourceUsage(t *testing.T) {
 	logger := logutil.NewTestLogger(t)
 
 	// Use a substantial number of models to test resource usage
-	testModels := models.ListAllModels() // All 15 models
+	testModels := models.ListAllModels() // All 21 models
 
 	env := setupMultiModelTestEnv(t, logger, testModels, nil)
 	defer env.cleanup()

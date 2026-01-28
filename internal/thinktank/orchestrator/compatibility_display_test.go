@@ -94,8 +94,6 @@ func TestDisplayCompatibilityCard(t *testing.T) {
 			expectedOut: []string{
 				"3/3 models compatible",
 				"Context usage range: 45.2% - 65.8%",
-				"Best efficiency: gpt-4o-mini (45.2%)",
-				"Worst efficiency: claude-3-opus (65.8%)",
 			},
 		},
 		{
@@ -154,8 +152,6 @@ func TestDisplayCompatibilityCard(t *testing.T) {
 			expectedOut: []string{
 				"2/3 models compatible (1 skipped)",
 				"Context usage range: 45.2% - 95.8%",
-				"Best efficiency: gpt-4o-mini (45.2%)",
-				"Worst efficiency: claude-3-opus (95.8%)",
 				"gpt-4o-mini",
 				"gpt-4o",
 				"claude-3-opus",

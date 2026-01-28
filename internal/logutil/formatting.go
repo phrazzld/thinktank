@@ -95,6 +95,12 @@ func ColorizeStatus(status string, colors *ColorScheme) string {
 		// Warning status (rate limited, etc.) - apply warning color
 		return colors.ColorWarning(status)
 	}
+	lowerStatus := strings.ToLower(status)
+	if strings.Contains(lowerStatus, "processing") ||
+		strings.Contains(lowerStatus, "queued") ||
+		strings.Contains(lowerStatus, "starting") {
+		return colors.ColorInfo(status)
+	}
 
 	// Default status - no special coloring
 	return status

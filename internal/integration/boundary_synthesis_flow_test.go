@@ -9,6 +9,7 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
 )
 
 // TestBoundarySynthesisFlow tests the complete flow with synthesis model using boundary mocks
@@ -18,15 +19,15 @@ func TestBoundarySynthesisFlow(t *testing.T) {
 	IntegrationTestWithBoundaries(t, func(env *BoundaryTestEnv) {
 		// Configure test parameters
 		instructions := "Test instructions for synthesis"
-		modelNames := []string{"kimi-k2-thinking", "gpt-5.2", "gemini-3-flash"}
+		modelNames := []string{"moonshotai/kimi-k2.5", "gpt-5.2", "gemini-3-flash"}
 		synthesisModel := "gpt-5.2"
 
 		// Set up mock responses for each model
 		mockOutputs := map[string]string{
-			"kimi-k2-thinking": "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
-			"gpt-5.2":          "# Output from Model 2\n\nThis is test output from gpt-4o.",
-			"gemini-3-flash":   "# Output from Model 3\n\nThis is test output from gemini-3-flash.",
-			synthesisModel:     "# Synthesized Output\n\nThis content combines insights from all models.",
+			"moonshotai/kimi-k2.5": "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
+			"gpt-5.2":              "# Output from Model 2\n\nThis is test output from gpt-4o.",
+			"gemini-3-flash":       "# Output from Model 3\n\nThis is test output from gemini-3-flash.",
+			synthesisModel:         "# Synthesized Output\n\nThis content combines insights from all models.",
 		}
 
 		// Setup the test environment using the standard helper
@@ -47,7 +48,8 @@ func TestBoundarySynthesisFlow(t *testing.T) {
 
 		// Verify that individual model output files were also created
 		for _, modelName := range modelNames {
-			expectedFilePath := filepath.Join(outputDir, modelName+".md")
+			sanitizedModelName := modelproc.SanitizeFilename(modelName)
+			expectedFilePath := filepath.Join(outputDir, sanitizedModelName+".md")
 			expectedContent := mockOutputs[modelName]
 			VerifyFileContent(t, env, expectedFilePath, expectedContent)
 		}
@@ -115,7 +117,8 @@ func TestBoundarySynthesisWithPartialFailure(t *testing.T) {
 		// Verify that model1 and model3 output files were created, but not model2
 		successfulModels := []string{"model1", "model3"}
 		for _, modelName := range successfulModels {
-			expectedFilePath := filepath.Join(outputDir, modelName+".md")
+			sanitizedModelName := modelproc.SanitizeFilename(modelName)
+			expectedFilePath := filepath.Join(outputDir, sanitizedModelName+".md")
 			expectedContent := mockOutputs[modelName]
 			VerifyFileContent(t, env, expectedFilePath, expectedContent)
 		}

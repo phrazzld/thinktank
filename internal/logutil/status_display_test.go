@@ -8,6 +8,7 @@ import (
 
 func TestStatusDisplay_Basic(t *testing.T) {
 	display := NewStatusDisplay(true) // Interactive mode
+	t.Cleanup(display.Stop)           // Prevent goroutine leak
 
 	// Create test model states
 	states := []*ModelState{
@@ -64,6 +65,7 @@ func TestStatusDisplay_NonInteractive(t *testing.T) {
 
 func TestStatusDisplay_FormatModelLine(t *testing.T) {
 	display := NewStatusDisplay(true)
+	t.Cleanup(display.Stop) // Prevent goroutine leak
 	display.terminalWidth = 80
 
 	testCases := []struct {
@@ -105,7 +107,7 @@ func TestStatusDisplay_FormatModelLine(t *testing.T) {
 				ErrorMsg:    "timeout",
 			},
 			totalModels: 5,
-			expectParts: []string{"[3/5]", "test-model", "failed", "timeout"},
+			expectParts: []string{"[3/5]", "test-model", "timeout"},
 		},
 		{
 			name: "Rate limited state",
@@ -117,7 +119,7 @@ func TestStatusDisplay_FormatModelLine(t *testing.T) {
 				RetryAfter:  2 * time.Second,
 			},
 			totalModels: 5,
-			expectParts: []string{"[4/5]", "test-model", "rate limited", "2.0s"},
+			expectParts: []string{"[4/5]", "test-model", "retry in", "2.0s"},
 		},
 	}
 
@@ -136,6 +138,7 @@ func TestStatusDisplay_FormatModelLine(t *testing.T) {
 
 func TestStatusDisplay_ZeroPadding(t *testing.T) {
 	display := NewStatusDisplay(true)
+	t.Cleanup(display.Stop) // Prevent goroutine leak
 
 	testCases := []struct {
 		index       int
@@ -166,6 +169,7 @@ func TestStatusDisplay_ZeroPadding(t *testing.T) {
 
 func TestStatusDisplay_GetDisplayWidth(t *testing.T) {
 	display := NewStatusDisplay(true)
+	t.Cleanup(display.Stop) // Prevent goroutine leak
 
 	testCases := []struct {
 		input    string

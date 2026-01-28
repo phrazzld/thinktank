@@ -38,6 +38,11 @@ func (c *consoleWriter) StartStatusTracking(modelNames []string) {
 	c.statusTracker = NewModelStatusTracker(modelInfos)
 	c.statusDisplay = NewStatusDisplay(c.isInteractive)
 	c.usingStatus = true
+	if c.isInteractive {
+		c.statusDisplay.SetOnSpinnerTick(func() {
+			c.RefreshStatusDisplay()
+		})
+	}
 
 	// Display header
 	c.statusDisplay.RenderSummaryHeader(len(modelNames))
@@ -94,7 +99,7 @@ func (c *consoleWriter) RefreshStatusDisplay() {
 	summary := c.statusTracker.GetSummary()
 
 	if c.isInteractive {
-		c.statusDisplay.RenderStatus(states, true)
+		c.statusDisplay.RenderStatus(states, false)
 	} else {
 		c.statusDisplay.RenderPeriodicUpdate(states, summary)
 	}

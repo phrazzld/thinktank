@@ -146,6 +146,50 @@ var modelDefinitions = map[string]ModelInfo{
 		},
 	},
 
+	// GPT-5.2 Codex - Coding-optimized GPT-5.2 variant
+	// https://openrouter.ai/openai/gpt-5.2-codex
+	"gpt-5.2-codex": {
+		Provider:        "openrouter",
+		APIModelID:      "openai/gpt-5.2-codex",
+		ContextWindow:   400000,
+		MaxOutputTokens: 128000,
+		DefaultParams: map[string]interface{}{
+			"temperature":       0.7,
+			"top_p":             1.0,
+			"frequency_penalty": 0.0,
+			"presence_penalty":  0.0,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 128000),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
+		},
+	},
+
+	// OpenAI GPT-5.2 Codex - Full OpenRouter slug for GPT-5.2 Codex
+	// https://openrouter.ai/openai/gpt-5.2-codex
+	"openai/gpt-5.2-codex": {
+		Provider:        "openrouter",
+		APIModelID:      "openai/gpt-5.2-codex",
+		ContextWindow:   400000,
+		MaxOutputTokens: 128000,
+		DefaultParams: map[string]interface{}{
+			"temperature":       0.7,
+			"top_p":             1.0,
+			"frequency_penalty": 0.0,
+			"presence_penalty":  0.0,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 128000),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
+		},
+	},
+
 	// =============================================================================
 	// GOOGLE GEMINI MODELS
 	// =============================================================================
@@ -278,11 +322,11 @@ var modelDefinitions = map[string]ModelInfo{
 	// MOONSHOT KIMI MODELS
 	// =============================================================================
 
-	// Kimi K2 Thinking - 1T params, 99.1% AIME, #2 overall (after GPT-5)
-	// https://openrouter.ai/moonshotai/kimi-k2-thinking
-	"kimi-k2-thinking": {
+	// Kimi K2.5 - 1T params, 99.1% AIME, #2 overall (after GPT-5)
+	// https://openrouter.ai/moonshotai/kimi-k2.5
+	"moonshotai/kimi-k2.5": {
 		Provider:        "openrouter",
-		APIModelID:      "moonshotai/kimi-k2-thinking",
+		APIModelID:      "moonshotai/kimi-k2.5",
 		ContextWindow:   262144,
 		MaxOutputTokens: 65535,
 		DefaultParams: map[string]interface{}{
@@ -337,6 +381,28 @@ var modelDefinitions = map[string]ModelInfo{
 			"temperature": floatConstraint(0.0, 2.0),
 			"top_p":       floatConstraint(0.0, 1.0),
 			"max_tokens":  intConstraint(1, 65535),
+		},
+	},
+
+	// =============================================================================
+	// QWEN MODELS
+	// =============================================================================
+
+	// Qwen3 Coder - Qwen's coding-focused model
+	// https://openrouter.ai/qwen/qwen3-coder
+	"qwen/qwen3-coder": {
+		Provider:        "openrouter",
+		APIModelID:      "qwen/qwen3-coder",
+		ContextWindow:   262144,
+		MaxOutputTokens: 65536,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.95,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 65536),
 		},
 	},
 
@@ -509,7 +575,7 @@ func ListModelsForProvider(provider string) []string {
 //   - grok-4.1-fast: Largest context (2M), strong Arena, xAI's flagship
 //   - deepseek-v3.2: Frontier-class reasoning at great value, DeepSeek's flagship
 //   - glm-4.7: Best sustained agentic (87.4 τ²-Bench), 84.9% LiveCodeBench, Zhipu's flagship
-//   - kimi-k2-thinking: Elite math (99.1% AIME), interleaved thinking, Moonshot's flagship
+//   - moonshotai/kimi-k2.5: Elite math (99.1% AIME), interleaved thinking, Moonshot's flagship
 //   - minimax-m2.1: Fast/efficient (10B active), 72.5% SWE-bench multilingual, MiniMax's flagship
 var coreCouncilModels = []string{
 	"gemini-3-pro",
@@ -518,7 +584,7 @@ var coreCouncilModels = []string{
 	"grok-4.1-fast",
 	"deepseek-v3.2",
 	"glm-4.7",
-	"kimi-k2-thinking",
+	"moonshotai/kimi-k2.5",
 	"minimax-m2.1",
 }
 
