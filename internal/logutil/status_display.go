@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sync"
+	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	"golang.org/x/term"
 )
 
@@ -15,6 +18,10 @@ type StatusDisplay struct {
 	colors        *ColorScheme
 	symbols       *SymbolProvider
 	lastLineCount int // Track lines printed for cursor positioning
+	spinner       spinner.Model
+	spinnerTick   *time.Ticker
+	spinnerDone   chan struct{}
+	mu            sync.Mutex // protect spinner state
 }
 
 // NewStatusDisplay creates a new status display with environment detection
@@ -26,12 +33,58 @@ func NewStatusDisplay(isInteractive bool) *StatusDisplay {
 		}
 	}
 
-	return &StatusDisplay{
+	display := &StatusDisplay{
 		isInteractive: isInteractive,
 		terminalWidth: width,
 		colors:        NewColorScheme(isInteractive),
 		symbols:       NewSymbolProvider(isInteractive),
 	}
+	if isInteractive {
+		display.spinner = spinner.New()
+		display.spinner.Spinner = spinner.Dot
+		display.spinnerTick = time.NewTicker(100 * time.Millisecond)
+		display.spinnerDone = make(chan struct{})
+		go display.runSpinnerTicker()
+	}
+	return display
+}
+
+func (d *StatusDisplay) runSpinnerTicker() {
+	d.mu.Lock()
+	ticker := d.spinnerTick
+	done := d.spinnerDone
+	d.mu.Unlock()
+	if ticker == nil || done == nil {
+		return
+	}
+
+	for {
+		select {
+		case <-ticker.C:
+			d.mu.Lock()
+			d.spinner, _ = d.spinner.Update(d.spinner.Tick())
+			d.mu.Unlock()
+		case <-done:
+			return
+		}
+	}
+}
+
+// Stop halts the spinner ticker if running.
+func (d *StatusDisplay) Stop() {
+	d.mu.Lock()
+	ticker := d.spinnerTick
+	done := d.spinnerDone
+	d.spinnerTick = nil
+	d.spinnerDone = nil
+	d.mu.Unlock()
+
+	if ticker == nil || done == nil {
+		return
+	}
+
+	ticker.Stop()
+	close(done)
 }
 
 // RenderStatus displays the current status of all models
@@ -102,13 +155,13 @@ func (d *StatusDisplay) formatModelLine(state *ModelState, totalModels int) stri
 func (d *StatusDisplay) formatStatus(state *ModelState) string {
 	switch state.Status {
 	case StatusQueued:
-		return d.colors.ColorSymbol("queued...")
+		return d.formatSpinnerStatus("queued")
 
 	case StatusStarting:
-		return d.colors.ColorSymbol("starting...")
+		return d.formatSpinnerStatus("starting")
 
 	case StatusProcessing:
-		return d.colors.ColorSymbol("processing...")
+		return d.formatSpinnerStatus("processing")
 
 	case StatusRateLimited:
 		symbol := d.colors.ColorWarning(d.symbols.GetSymbols().Warning)
@@ -134,6 +187,22 @@ func (d *StatusDisplay) formatStatus(state *ModelState) string {
 	}
 }
 
+func (d *StatusDisplay) formatSpinnerStatus(label string) string {
+	if !d.isInteractive {
+		return d.colors.ColorSymbol(label + "...")
+	}
+
+	d.mu.Lock()
+	if d.spinnerTick == nil {
+		d.mu.Unlock()
+		return d.colors.ColorSymbol(label + "...")
+	}
+	spinnerView := d.spinner.View()
+	d.mu.Unlock()
+
+	return d.colors.ColorSymbol(fmt.Sprintf("%s %s", spinnerView, label))
+}
+
 // RenderSummaryHeader displays initial processing information
 func (d *StatusDisplay) RenderSummaryHeader(totalModels int) {
 	fmt.Printf("\nProcessing %d models...\n", totalModels)
@@ -141,6 +210,7 @@ func (d *StatusDisplay) RenderSummaryHeader(totalModels int) {
 
 // RenderCompletion displays final completion message and clears status area
 func (d *StatusDisplay) RenderCompletion() {
+	d.Stop()
 	if d.isInteractive && d.lastLineCount > 0 {
 		// Clear the status lines by overwriting with empty lines
 		for i := 0; i < d.lastLineCount; i++ {
