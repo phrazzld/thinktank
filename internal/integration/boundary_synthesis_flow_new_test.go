@@ -15,6 +15,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/ratelimit"
 	"github.com/phrazzld/thinktank/internal/thinktank"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
+	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
 )
 
 // TestBoundarySynthesisFlowNew tests the complete flow with synthesis model using boundary mocks
@@ -41,7 +42,7 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 	instructions := "Test instructions for synthesis"
 
 	// Set up multiple model names and synthesis model
-	modelNames := []string{"kimi-k2-thinking", "gpt-5.2", "gemini-3-flash"}
+	modelNames := []string{"moonshotai/kimi-k2.5", "gpt-5.2", "gemini-3-flash"}
 	synthesisModel := "gpt-5.2"
 
 	// Parse log level
@@ -68,9 +69,9 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 
 	// Expected model outputs
 	mockOutputs := map[string]string{
-		"kimi-k2-thinking": "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
-		"gpt-5.2":          "# Output from Model 2\n\nThis is test output from gpt-4o.",
-		"gemini-3-flash":   "# Output from Model 3\n\nThis is test output from gemini-3-flash.",
+		"moonshotai/kimi-k2.5": "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
+		"gpt-5.2":              "# Output from Model 2\n\nThis is test output from gpt-4o.",
+		"gemini-3-flash":       "# Output from Model 3\n\nThis is test output from gemini-3-flash.",
 	}
 
 	// Expected synthesis output
@@ -178,7 +179,8 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 
 	// Verify that individual model output files were also created
 	for _, modelName := range modelNames {
-		expectedFilePath := filepath.Join(outputDir, modelName+".md")
+		sanitizedModelName := modelproc.SanitizeFilename(modelName)
+		expectedFilePath := filepath.Join(outputDir, sanitizedModelName+".md")
 		_, modelStatErr := os.Stat(expectedFilePath)
 		if os.IsNotExist(modelStatErr) {
 			t.Errorf("Expected output file %s not created", expectedFilePath)
@@ -222,7 +224,7 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	instructions := "Test instructions for synthesis with failures"
 
 	// Set up multiple model names and synthesis model
-	modelNames := []string{"kimi-k2-thinking", "gpt-5.2", "gemini-3-flash"}
+	modelNames := []string{"moonshotai/kimi-k2.5", "gpt-5.2", "gemini-3-flash"}
 	synthesisModel := "gpt-5.2"
 
 	// Parse log level
@@ -257,8 +259,8 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 
 	// Expected model outputs
 	mockOutputs := map[string]string{
-		"kimi-k2-thinking": "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
-		"gemini-3-flash":   "# Output from Model 3\n\nThis is test output from gemini-3-flash.",
+		"moonshotai/kimi-k2.5": "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
+		"gemini-3-flash":       "# Output from Model 3\n\nThis is test output from gemini-3-flash.",
 	}
 
 	// Expected synthesis output
@@ -368,9 +370,10 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	}
 
 	// Verify that o3 and gemini-3-flash output files were created
-	successfulModels := []string{"kimi-k2-thinking", "gemini-3-flash"}
+	successfulModels := []string{"moonshotai/kimi-k2.5", "gemini-3-flash"}
 	for _, modelName := range successfulModels {
-		expectedFilePath := filepath.Join(outputDir, modelName+".md")
+		sanitizedModelName := modelproc.SanitizeFilename(modelName)
+		expectedFilePath := filepath.Join(outputDir, sanitizedModelName+".md")
 		_, modelStatErr := os.Stat(expectedFilePath)
 		if os.IsNotExist(modelStatErr) {
 			t.Errorf("Expected output file %s not created", expectedFilePath)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
 )
 
 // TestComprehensiveE2EWorkflow validates the entire application workflow from start to finish
@@ -20,9 +21,9 @@ func TestComprehensiveE2EWorkflow(t *testing.T) {
 
 		// Test with multiple models from different providers
 		modelNames := []string{
-			"gpt-5.2",          // OpenAI model
-			"gemini-3-flash",   // Google model
-			"kimi-k2-thinking", // OpenAI model
+			"gpt-5.2",              // OpenAI model
+			"gemini-3-flash",       // Google model
+			"moonshotai/kimi-k2.5", // Moonshot model
 		}
 		synthesisModel := "gpt-5.2" // Different model for synthesis
 
@@ -79,7 +80,7 @@ The codebase demonstrates a well-structured layered architecture with clear sepa
 - Code duplication: Minimal, good use of shared utilities
 - Naming conventions: Consistent and descriptive`,
 
-			"kimi-k2-thinking": `# Security & Performance Analysis (O4-Mini)
+			"moonshotai/kimi-k2.5": `# Security & Performance Analysis (O4-Mini)
 
 ## Security Assessment
 
@@ -180,7 +181,8 @@ This analysis provides a clear foundation for continued development, balancing i
 
 		// 2. Verify individual model output files were created
 		for _, modelName := range modelNames {
-			expectedFilePath := filepath.Join(outputDir, modelName+".md")
+			sanitizedModelName := modelproc.SanitizeFilename(modelName)
+			expectedFilePath := filepath.Join(outputDir, sanitizedModelName+".md")
 			expectedContent := modelResponses[modelName]
 			VerifyFileContent(t, env, expectedFilePath, expectedContent)
 		}
@@ -206,7 +208,7 @@ This analysis provides a clear foundation for continued development, balancing i
 func TestComprehensiveE2EWorkflowIndividualOutput(t *testing.T) {
 	IntegrationTestWithBoundaries(t, func(env *BoundaryTestEnv) {
 		// Test individual output workflow (no synthesis)
-		modelNames := []string{"gpt-5.2", "kimi-k2-thinking", "gemini-3-flash"}
+		modelNames := []string{"gpt-5.2", "moonshotai/kimi-k2.5", "gemini-3-flash"}
 
 		instructions := "Generate individual technical analyses for each model."
 
@@ -214,9 +216,9 @@ func TestComprehensiveE2EWorkflowIndividualOutput(t *testing.T) {
 		setupSourceFiles(t, env)
 
 		modelResponses := map[string]string{
-			"gpt-5.2":          "# Individual Analysis - GPT-4.1\n\nDetailed technical analysis from GPT-4.1 perspective.",
-			"kimi-k2-thinking": "# Individual Analysis - O4-Mini\n\nDetailed technical analysis from O4-Mini perspective.",
-			"gemini-3-flash":   "# Individual Analysis - Gemini\n\nDetailed technical analysis from Gemini perspective.",
+			"gpt-5.2":              "# Individual Analysis - GPT-4.1\n\nDetailed technical analysis from GPT-4.1 perspective.",
+			"moonshotai/kimi-k2.5": "# Individual Analysis - O4-Mini\n\nDetailed technical analysis from O4-Mini perspective.",
+			"gemini-3-flash":       "# Individual Analysis - Gemini\n\nDetailed technical analysis from Gemini perspective.",
 		}
 
 		for model, response := range modelResponses {
@@ -237,7 +239,8 @@ func TestComprehensiveE2EWorkflowIndividualOutput(t *testing.T) {
 		// Verify only individual files were created (no synthesis)
 		outputDir := env.Config.OutputDir
 		for _, modelName := range modelNames {
-			expectedFilePath := filepath.Join(outputDir, modelName+".md")
+			sanitizedModelName := modelproc.SanitizeFilename(modelName)
+			expectedFilePath := filepath.Join(outputDir, sanitizedModelName+".md")
 			VerifyFileContent(t, env, expectedFilePath, modelResponses[modelName])
 		}
 
@@ -270,7 +273,7 @@ func TestComprehensiveE2EWorkflowPartialSuccess(t *testing.T) {
 		env.ExpectError("Simulated model failure for rate limit testing")    // Part of detailed error chain
 		env.ExpectError("Completed with model errors")                       // Final error summary
 
-		modelNames := []string{"gpt-5.2", "failing-model", "kimi-k2-thinking"}
+		modelNames := []string{"gpt-5.2", "failing-model", "moonshotai/kimi-k2.5"}
 		synthesisModel := "gemini-3-pro"
 
 		instructions := "Test partial success handling with some model failures."
@@ -280,8 +283,8 @@ func TestComprehensiveE2EWorkflowPartialSuccess(t *testing.T) {
 
 		// Configure successful models
 		successfulResponses := map[string]string{
-			"gpt-5.2":          "# Successful Analysis - GPT-4.1\n\nThis model succeeded.",
-			"kimi-k2-thinking": "# Successful Analysis - O4-Mini\n\nThis model succeeded.",
+			"gpt-5.2":              "# Successful Analysis - GPT-4.1\n\nThis model succeeded.",
+			"moonshotai/kimi-k2.5": "# Successful Analysis - O4-Mini\n\nThis model succeeded.",
 		}
 
 		// Synthesis response
@@ -338,7 +341,8 @@ func TestComprehensiveE2EWorkflowPartialSuccess(t *testing.T) {
 		// Verify successful models created output files
 		outputDir := env.Config.OutputDir
 		for model, expectedContent := range successfulResponses {
-			expectedFilePath := filepath.Join(outputDir, model+".md")
+			sanitizedModelName := modelproc.SanitizeFilename(model)
+			expectedFilePath := filepath.Join(outputDir, sanitizedModelName+".md")
 			VerifyFileContent(t, env, expectedFilePath, expectedContent)
 		}
 

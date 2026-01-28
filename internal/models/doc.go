@@ -15,8 +15,6 @@
 //	provider, err := models.GetProviderForModel("gemini-3-flash")
 //	envVar := models.GetAPIKeyEnvVar(provider)
 //
-// The package supports 7 models across 3 providers:
-//   - OpenAI: gpt-5.2, o3
-//   - Gemini: gemini-3-flash, gemini-3-flash
-//   - OpenRouter: deepseek-chat-v3-0324, deepseek-r1, grok-3-beta
+// The package supports multiple OpenRouter-hosted production models plus test-only models.
+// See modelDefinitions in models.go for the current catalog.
 package models

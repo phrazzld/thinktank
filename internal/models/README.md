@@ -6,10 +6,9 @@ The `models` package provides a simple, hardcoded system for managing LLM model 
 
 This package contains metadata for all supported LLM models, including their providers, API model IDs, token limits, and default parameters. The design prioritizes simplicity and explicitness over configurability.
 
-**Supported Models (7 total):**
-- **OpenAI**: gpt-5.2, o3
-- **Gemini**: gemini-3-flash, gemini-3-flash
-- **OpenRouter**: openrouter/deepseek/deepseek-chat-v3-0324, openrouter/deepseek/deepseek-r1, openrouter/x-ai/grok-3-beta
+**Supported Models:**
+- See `modelDefinitions` in `models.go` for the current list.
+- Production models use the `openrouter` provider; test-only models use `test`.
 
 ## Package Structure
 
@@ -32,7 +31,7 @@ This package contains metadata for all supported LLM models, including their pro
 
 ```go
 type ModelInfo struct {
-    Provider        string                 // Provider name (openai, gemini, openrouter)
+    Provider        string                 // Provider name (openrouter, test)
     APIModelID      string                 // Model ID used in API calls
     ContextWindow   int                    // Maximum input + output tokens
     MaxOutputTokens int                    // Maximum output tokens
@@ -57,8 +56,8 @@ fmt.Printf("Provider: %s, Context: %d tokens\n", info.Provider, info.ContextWind
 Returns the provider name for a given model.
 
 ```go
-provider, err := models.GetProviderForModel("gemini-3-flash")
-// provider == "gemini"
+provider, err := models.GetProviderForModel("gpt-5.2")
+// provider == "openrouter"
 ```
 
 #### `ListAllModels() []string`
@@ -66,15 +65,15 @@ Returns a sorted slice of all supported model names.
 
 ```go
 allModels := models.ListAllModels()
-// ["gemini-3-flash", "gemini-3-flash", "gpt-5.2", "o3", ...]
+// ["claude-opus-4.5", "gemini-3-flash", "gpt-5.2", ...]
 ```
 
 #### `ListModelsForProvider(provider string) []string`
 Returns models for a specific provider.
 
 ```go
-openaiModels := models.ListModelsForProvider("openai")
-// ["gpt-5.2", "o3"]
+openrouterModels := models.ListModelsForProvider("openrouter")
+// ["claude-opus-4.5", "gpt-5.2", ...]
 ```
 
 #### `GetAPIKeyEnvVar(provider string) string`

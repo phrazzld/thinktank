@@ -216,6 +216,14 @@ func TestSetupOutputDirectoryEdgeCases(t *testing.T) {
 		if cliConfig.OutputDir == "" {
 			t.Error("Expected output directory to be set")
 		}
+		t.Cleanup(func() {
+			if cliConfig.OutputDir == "" {
+				return
+			}
+			if err := os.RemoveAll(cliConfig.OutputDir); err != nil {
+				t.Errorf("Failed to remove output directory %s: %v", cliConfig.OutputDir, err)
+			}
+		})
 	})
 
 	t.Run("ExistingOutputDir", func(t *testing.T) {
@@ -225,7 +233,11 @@ func TestSetupOutputDirectoryEdgeCases(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create temporary directory: %v", err)
 		}
-		defer func() { _ = os.RemoveAll(tempDir) }()
+		t.Cleanup(func() {
+			if err := os.RemoveAll(tempDir); err != nil {
+				t.Errorf("Failed to remove temp directory %s: %v", tempDir, err)
+			}
+		})
 
 		cliConfig := &config.CliConfig{
 			OutputDir:       tempDir,
