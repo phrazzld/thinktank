@@ -22,6 +22,9 @@ func TestNewColorScheme_Interactive(t *testing.T) {
 	if !containsColorCode(scheme.ColorWarning(text)) {
 		t.Errorf("Expected Warning to contain color codes, got %q", scheme.ColorWarning(text))
 	}
+	if !containsColorCode(scheme.ColorInfo(text)) {
+		t.Errorf("Expected Info to contain color codes, got %q", scheme.ColorInfo(text))
+	}
 }
 
 func TestNewColorScheme_NonInteractive(t *testing.T) {
@@ -40,6 +43,9 @@ func TestNewColorScheme_NonInteractive(t *testing.T) {
 	}
 	if result := scheme.ColorWarning(text); result != text {
 		t.Errorf("Expected Warning to be unchanged in non-interactive mode, got %q", result)
+	}
+	if result := scheme.ColorInfo(text); result != text {
+		t.Errorf("Expected Info to be unchanged in non-interactive mode, got %q", result)
 	}
 	if result := scheme.ColorDuration(text); result != text {
 		t.Errorf("Expected Duration to be unchanged in non-interactive mode, got %q", result)

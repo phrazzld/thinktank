@@ -62,6 +62,7 @@ func TestGatherProjectFiles(t *testing.T) {
 			name: "successful setup in dry-run mode",
 			cliConfig: &config.CliConfig{
 				OutputDir:        "",
+				DirPermissions:   0755,
 				InstructionsFile: "test.md",
 				Paths:            []string{"src/"},
 				DryRun:           true,

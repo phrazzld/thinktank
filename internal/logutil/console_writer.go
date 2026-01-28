@@ -9,6 +9,7 @@ package logutil
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -25,6 +26,16 @@ const (
 	MinTerminalWidth = 10
 	// MaxTerminalWidth is the maximum width we'll use (for very wide terminals)
 	MaxTerminalWidth = 120
+	// StandardSeparatorWidth aligns with the default TUI width for section dividers
+	StandardSeparatorWidth = 56
+)
+
+var (
+	processingModelErrorPattern = regexp.MustCompile(`(?i)processing model ([^\s:]+) failed:?\s*(.*)`)
+	modelFailedPattern          = regexp.MustCompile(`(?i)model ([^\s:]+) failed:?\s*(.*)`)
+	modelKeyPattern             = regexp.MustCompile(`(?i)model\s*[:=]\s*([^\s:]+)\s*:?\s*(.*)`)
+	modelNamePattern            = regexp.MustCompile(`(?i)model\s+([^\s:]+):`)
+	ansiPattern                 = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 )
 
 // ConsoleWriter defines an interface for clean, user-facing console output
@@ -128,14 +139,16 @@ type ConsoleWriter interface {
 	ShowFileOperations(message string)
 
 	// ShowSummarySection displays the main summary section with structured format.
-	// Uses UPPERCASE headers, bullet points, and basic statistics.
+	// Uses UPPERCASE headers, fixed-width labels, and compact guidance.
 	//
 	// Example:
 	// SUMMARY
-	// ───────
-	// ● 3 models processed
-	// ● 2 successful, 1 failed
-	// ● Output directory: ./path
+	// ════════════════════════════════════════════════════════
+	//   Models      3 processed   ● ● ○
+	//   Output      ./path
+	//
+	//   ▸ 1 model failed - review errors above
+	// ════════════════════════════════════════════════════════
 	ShowSummarySection(summary SummaryData)
 
 	// ShowOutputFiles displays the output files section with human-readable sizes.
@@ -163,16 +176,13 @@ type ConsoleWriter interface {
 	// SynthesisStarted reports that the synthesis phase has begun.
 	// This is called after all individual model processing is complete
 	// and the system begins combining results.
-	//
-	// Interactive mode: "📄 Synthesizing results..."
-	// CI mode: "Starting synthesis"
 	SynthesisStarted()
 
 	// SynthesisCompleted reports that synthesis has finished successfully.
 	// The outputPath parameter specifies where the final results were saved.
 	//
-	// Interactive mode: "✨ Done! Output saved to: path/to/output"
-	// CI mode: "Synthesis complete. Output: path/to/output"
+	// Interactive mode: "  Synthesizing...                            ✓"
+	// CI mode: "  Synthesizing...                            [OK]"
 	SynthesisCompleted(outputPath string)
 
 	// StatusMessage displays a general status update to the user.
@@ -243,9 +253,10 @@ type consoleWriter struct {
 	symbols       *SymbolProvider // Unicode/ASCII symbol provider with fallback detection
 
 	// Status tracking support (NEW)
-	statusTracker *ModelStatusTracker // Tracks model processing states
-	statusDisplay *StatusDisplay      // Handles status rendering
-	usingStatus   bool                // Whether status tracking is active
+	statusTracker  *ModelStatusTracker // Tracks model processing states
+	statusDisplay  *StatusDisplay      // Handles status rendering
+	usingStatus    bool                // Whether status tracking is active
+	midSectionOpen bool                // Whether the mid-section divider is open
 
 	// Dependency injection for testing
 	isTerminalFunc  func() bool
@@ -446,8 +457,6 @@ func (c *consoleWriter) SynthesisStarted() {
 	if c.quiet {
 		return
 	}
-
-	WriteToConsole("Synthesizing results...")
 }
 
 // SynthesisCompleted reports that synthesis has finished successfully
@@ -458,10 +467,11 @@ func (c *consoleWriter) SynthesisCompleted(outputPath string) {
 	if c.quiet {
 		return
 	}
-
-	coloredOutputPath := c.colors.ColorFilePath(outputPath)
-
-	WriteToConsoleF("Done! Output saved to: %s\n", coloredOutputPath)
+	c.startMidSectionLocked()
+	status := c.colors.ColorSuccess(c.symbols.GetSymbols().Success)
+	line := c.formatMidSectionLineLocked("Synthesizing...", status)
+	WriteToConsoleF("%s\n", line)
+	c.endMidSectionLocked()
 }
 
 // StatusMessage displays a general status update to the user
@@ -615,21 +625,134 @@ func (c *consoleWriter) formatToWidth(message string, width int) string {
 	return FormatToWidth(message, width, c.isInteractive)
 }
 
+func (c *consoleWriter) formatSuccessIndicator(successful, total int) string {
+	const thinSpace = "\u2009" // Unicode thin space
+	if total <= 0 {
+		return ""
+	}
+	if successful < 0 {
+		successful = 0
+	}
+	failures := total - successful
+	if failures < 0 {
+		failures = 0
+	}
+
+	successSymbol := "●"
+	failureSymbol := "○"
+	separator := thinSpace
+	if !c.isInteractive {
+		successSymbol = "o"
+		failureSymbol = "x"
+		separator = " "
+	}
+
+	parts := make([]string, 0, total)
+	for i := 0; i < successful; i++ {
+		part := successSymbol
+		if c.isInteractive {
+			part = c.colors.ColorSuccess(part)
+		}
+		parts = append(parts, part)
+	}
+	for i := 0; i < failures; i++ {
+		part := failureSymbol
+		if c.isInteractive {
+			part = c.colors.ColorError(part)
+		}
+		parts = append(parts, part)
+	}
+
+	return strings.Join(parts, separator)
+}
+
+func parseErrorDetails(message string) (string, string) {
+	msg := strings.TrimSpace(message)
+	if msg == "" {
+		return "", ""
+	}
+
+	if matches := modelNamePattern.FindAllStringSubmatchIndex(msg, -1); len(matches) > 0 {
+		last := matches[len(matches)-1]
+		modelName := strings.TrimSpace(msg[last[2]:last[3]])
+		details := strings.TrimSpace(msg[last[1]:])
+		return modelName, details
+	}
+	if matches := processingModelErrorPattern.FindStringSubmatch(msg); len(matches) == 3 {
+		return matches[1], strings.TrimSpace(matches[2])
+	}
+	if matches := modelFailedPattern.FindStringSubmatch(msg); len(matches) == 3 {
+		return matches[1], strings.TrimSpace(matches[2])
+	}
+	if matches := modelKeyPattern.FindStringSubmatch(msg); len(matches) == 3 {
+		return matches[1], strings.TrimSpace(matches[2])
+	}
+
+	return "", msg
+}
+
+func truncateErrorMessage(message string, width int, isInteractive bool) string {
+	if width < 3 {
+		width = 3
+	}
+	return FormatToWidth(message, width, isInteractive)
+}
+
+func summarizeErrorReason(details string) string {
+	cleaned := strings.TrimSpace(details)
+	if cleaned == "" {
+		return ""
+	}
+
+	lower := strings.ToLower(cleaned)
+	if strings.Contains(lower, "context deadline exceeded") {
+		return "API timeout (context deadline exceeded)"
+	}
+
+	segments := strings.Split(cleaned, ":")
+	for i := len(segments) - 1; i >= 0; i-- {
+		segment := strings.TrimSpace(segments[i])
+		if segment == "" {
+			continue
+		}
+		segment = strings.TrimSuffix(segment, "...")
+		segment = strings.TrimSuffix(segment, ".")
+		return segment
+	}
+
+	return cleaned
+}
+
 // ErrorMessage displays an error message to the user with appropriate formatting
 func (c *consoleWriter) ErrorMessage(message string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	// Errors are essential - always show them even in quiet mode
-	formattedMessage := c.formatMessageForTerminal(message)
-	coloredMessage := c.colors.ColorError(formattedMessage)
+	modelName, details := parseErrorDetails(message)
+	reason := summarizeErrorReason(details)
+	if reason == "" {
+		reason = "error"
+	}
+	availableWidth := c.getTerminalWidthLocked() - len("  Reason: ")
+	reason = truncateErrorMessage(reason, availableWidth, c.isInteractive)
+	coloredReason := c.colors.ColorError(reason)
 
 	if c.isInteractive {
-		errorSymbol := c.colors.ColorError(c.symbols.GetSymbols().Error)
-		WriteToConsoleF("%s %s\n", errorSymbol, coloredMessage)
-	} else {
-		WriteToConsoleF("ERROR: %s\n", coloredMessage)
+		WriteToConsole("Error\n")
+		if modelName != "" {
+			coloredModel := c.colors.ColorModelName(modelName)
+			WriteToConsoleF("  Model: %s\n", coloredModel)
+		}
+		WriteToConsoleF("  Reason: %s\n", coloredReason)
+		return
 	}
+
+	if modelName != "" {
+		WriteToConsoleF("ERROR: model=%s reason=%s\n", modelName, reason)
+		return
+	}
+	WriteToConsoleF("ERROR: %s\n", reason)
 }
 
 // WarningMessage displays a warning message to the user with appropriate formatting
@@ -733,9 +856,16 @@ func (c *consoleWriter) ShowFileOperations(message string) {
 		return
 	}
 
-	// Add whitespace before saving operations
-	if strings.HasPrefix(message, "Saving") {
-		WriteEmptyLineToConsole() // Phase separation whitespace
+	normalized := strings.ToLower(strings.TrimSpace(message))
+	switch {
+	case strings.HasPrefix(normalized, "saving"):
+		return
+	case strings.Contains(normalized, "outputs saved"):
+		c.startMidSectionLocked()
+		status := c.colors.ColorSuccess(c.symbols.GetSymbols().Success)
+		line := c.formatMidSectionLineLocked("Saving outputs...", status)
+		WriteToConsoleF("%s\n", line)
+		return
 	}
 
 	// Clean, declarative file operation messaging
@@ -752,28 +882,28 @@ func (c *consoleWriter) ShowSummarySection(summary SummaryData) {
 		return
 	}
 
-	layout := c.getLayoutLocked()
+	if c.midSectionOpen {
+		c.endMidSectionLocked()
+	}
 
 	// Add whitespace before summary section
 	WriteEmptyLineToConsole() // Phase separation whitespace
 
 	// Display UPPERCASE header with separator line
 	headerText := "SUMMARY"
-	separatorLength := len(headerText)
-	separatorLine := layout.GetSeparatorLine(separatorLength)
+	separatorLine := strings.Repeat(c.summarySeparatorRune(), StandardSeparatorWidth)
 
 	WriteToConsoleF("%s\n", c.colors.ColorSectionHeader(headerText))
 	WriteToConsoleF("%s\n", c.colors.ColorSeparator(separatorLine))
 
-	// Display bullet point statistics
-	WriteToConsoleF("%s %d models processed\n",
-		c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
-		summary.ModelsProcessed)
-
-	WriteToConsoleF("%s %d successful, %d failed\n",
-		c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
-		summary.SuccessfulModels,
-		summary.FailedModels)
+	labelWidth := 10
+	modelsLabel := fmt.Sprintf("  %-*s", labelWidth, "Models")
+	indicatorTotal := summary.SuccessfulModels + summary.FailedModels
+	indicator := c.formatSuccessIndicator(summary.SuccessfulModels, indicatorTotal)
+	WriteToConsoleF("%s %d processed   %s\n",
+		modelsLabel,
+		summary.ModelsProcessed,
+		indicator)
 
 	// Show synthesis status if not skipped
 	if summary.SynthesisStatus != "skipped" {
@@ -786,67 +916,105 @@ func (c *consoleWriter) ShowSummarySection(summary SummaryData) {
 		default:
 			statusText = summary.SynthesisStatus
 		}
-		WriteToConsoleF("%s Synthesis: %s\n",
-			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
-			statusText)
+		synthesisLabel := fmt.Sprintf("  %-*s", labelWidth, "Synthesis")
+		WriteToConsoleF("%s %s\n", synthesisLabel, statusText)
 	}
 
 	// Show output directory (sanitized to prevent leaking absolute paths)
-	WriteToConsoleF("%s Output directory: %s\n",
-		c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
+	outputLabel := fmt.Sprintf("  %-*s", labelWidth, "Output")
+	WriteToConsoleF("%s %s\n",
+		outputLabel,
 		c.colors.ColorFilePath(pathutil.SanitizePathForDisplay(summary.OutputDirectory)))
 
 	// Add contextual messaging and guidance based on scenarios
 	c.displayScenarioGuidance(summary)
+
+	WriteToConsoleF("%s\n", c.colors.ColorSeparator(separatorLine))
 }
 
 // displayScenarioGuidance provides contextual messaging and actionable next steps
 // based on the processing results (all failed, partial success, etc.)
 func (c *consoleWriter) displayScenarioGuidance(summary SummaryData) {
-	// Determine the scenario and provide appropriate guidance
-	if summary.SuccessfulModels == 0 && summary.FailedModels > 0 {
-		// All models failed scenario
-		WriteEmptyLineToConsole()
-		WriteToConsoleF("%s %s\n",
-			c.colors.ColorSymbol(c.symbols.GetSymbols().Warning),
-			c.colors.ColorWarning("All models failed to process"))
-		WriteToConsoleF("  %s Check your API keys and network connectivity\n",
-			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
-		WriteToConsoleF("  %s Review error details above for specific failure reasons\n",
-			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
-		WriteToConsoleF("  %s Verify model names and rate limits with providers\n",
-			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
-	} else if summary.FailedModels > 0 && summary.SuccessfulModels > 0 {
-		// Partial success scenario
-		WriteEmptyLineToConsole()
-		WriteToConsoleF("%s %s\n",
-			c.colors.ColorSymbol(c.symbols.GetSymbols().Warning),
-			c.colors.ColorWarning("Partial success - some models failed"))
-
-		successRate := float64(summary.SuccessfulModels) / float64(summary.ModelsProcessed) * 100
-		WriteToConsoleF("  %s Success rate: %.0f%% (%d/%d models)\n",
-			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
-			successRate,
-			summary.SuccessfulModels,
-			summary.ModelsProcessed)
-		WriteToConsoleF("  %s Check failed model details above for specific issues\n",
-			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
-		WriteToConsoleF("  %s Consider retrying failed models or adjusting configuration\n",
-			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
-	} else if summary.SuccessfulModels > 0 && summary.FailedModels == 0 {
-		// Complete success scenario
-		WriteEmptyLineToConsole()
-		WriteToConsoleF("%s %s\n",
-			c.colors.ColorSymbol(c.symbols.GetSymbols().Success),
-			c.colors.ColorSuccess("All models processed successfully"))
-		if summary.SynthesisStatus == "completed" {
-			WriteToConsoleF("  %s Synthesis completed - check the combined output above\n",
-				c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
-		} else if summary.ModelsProcessed > 1 {
-			WriteToConsoleF("  %s Individual model outputs saved - see file list above\n",
-				c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
-		}
+	if summary.FailedModels == 0 {
+		return
 	}
+
+	message := c.formatFailureGuidance(summary)
+	if message == "" {
+		return
+	}
+
+	WriteEmptyLineToConsole()
+	guidanceSymbol := c.guidanceSymbol()
+	WriteToConsoleF("  %s %s\n", guidanceSymbol, message)
+}
+
+func (c *consoleWriter) formatFailureGuidance(summary SummaryData) string {
+	if summary.FailedModels <= 0 {
+		return ""
+	}
+
+	if summary.SuccessfulModels == 0 {
+		return "All models failed - review errors above"
+	}
+
+	noun := "model"
+	if summary.FailedModels != 1 {
+		noun = "models"
+	}
+	return fmt.Sprintf("%d %s failed - review errors above", summary.FailedModels, noun)
+}
+
+func (c *consoleWriter) guidanceSymbol() string {
+	if c.isInteractive {
+		return "▸"
+	}
+	return "->"
+}
+
+func (c *consoleWriter) summarySeparatorRune() string {
+	if c.isInteractive {
+		return "═"
+	}
+	return "="
+}
+
+func (c *consoleWriter) midSectionSeparatorRune() string {
+	if c.isInteractive {
+		return "─"
+	}
+	return "-"
+}
+
+func (c *consoleWriter) startMidSectionLocked() {
+	if c.midSectionOpen {
+		return
+	}
+	line := strings.Repeat(c.midSectionSeparatorRune(), StandardSeparatorWidth)
+	WriteToConsoleF("%s\n", c.colors.ColorSeparator(line))
+	c.midSectionOpen = true
+}
+
+func (c *consoleWriter) endMidSectionLocked() {
+	if !c.midSectionOpen {
+		return
+	}
+	line := strings.Repeat(c.midSectionSeparatorRune(), StandardSeparatorWidth)
+	WriteToConsoleF("%s\n", c.colors.ColorSeparator(line))
+	c.midSectionOpen = false
+}
+
+func (c *consoleWriter) formatMidSectionLineLocked(label, status string) string {
+	prefix := "  " + label
+	padding := StandardSeparatorWidth - len(prefix) - len(stripANSI(status))
+	if padding < 1 {
+		padding = 1
+	}
+	return prefix + strings.Repeat(" ", padding) + status
+}
+
+func stripANSI(text string) string {
+	return ansiPattern.ReplaceAllString(text, "")
 }
 
 // ShowOutputFiles displays the output files section with human-readable sizes

@@ -105,7 +105,7 @@ func TestStatusDisplay_FormatModelLine(t *testing.T) {
 				ErrorMsg:    "timeout",
 			},
 			totalModels: 5,
-			expectParts: []string{"[3/5]", "test-model", "failed", "timeout"},
+			expectParts: []string{"[3/5]", "test-model", "timeout"},
 		},
 		{
 			name: "Rate limited state",
@@ -117,7 +117,7 @@ func TestStatusDisplay_FormatModelLine(t *testing.T) {
 				RetryAfter:  2 * time.Second,
 			},
 			totalModels: 5,
-			expectParts: []string{"[4/5]", "test-model", "rate limited", "2.0s"},
+			expectParts: []string{"[4/5]", "test-model", "retry in", "2.0s"},
 		},
 	}
 

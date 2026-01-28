@@ -93,13 +93,13 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			name:          "Interactive SynthesisStarted",
 			isInteractive: true,
 			action:        func(cw ConsoleWriter) { cw.SynthesisStarted() },
-			expected:      "Synthesizing results...\n",
+			expected:      "",
 		},
 		{
 			name:          "Interactive SynthesisCompleted",
 			isInteractive: true,
 			action:        func(cw ConsoleWriter) { cw.SynthesisCompleted("output/path") },
-			expected:      "Done! Output saved to:",
+			expected:      "Synthesizing...",
 		},
 		{
 			name:          "Interactive StatusMessage",
@@ -154,13 +154,13 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			name:          "CI SynthesisStarted",
 			isInteractive: false,
 			action:        func(cw ConsoleWriter) { cw.SynthesisStarted() },
-			expected:      "Synthesizing results...\n",
+			expected:      "",
 		},
 		{
 			name:          "CI SynthesisCompleted",
 			isInteractive: false,
 			action:        func(cw ConsoleWriter) { cw.SynthesisCompleted("output/path") },
-			expected:      "Done! Output saved to: output/path\n",
+			expected:      "Synthesizing...",
 		},
 		{
 			name:          "CI StatusMessage",
@@ -352,8 +352,7 @@ func TestConsoleWriter_NonInteractiveEnvironment(t *testing.T) {
 	expectedStrings := []string{
 		"Processing 1 models...",
 		"Completed model 1/1: test",
-		"Synthesizing results...",
-		"Done! Output saved to: output/path",
+		"Synthesizing...",
 	}
 
 	for _, expected := range expectedStrings {

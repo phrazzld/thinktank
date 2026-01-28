@@ -22,7 +22,7 @@ func TestSynthesisStatusIntegration(t *testing.T) {
 			synthesisStatus: "completed",
 			expectedInOutput: []string{
 				"SUMMARY",
-				"Synthesis:",
+				"Synthesis",
 				"[OK] completed",
 			},
 			notExpectedOutput: []string{},
@@ -32,7 +32,7 @@ func TestSynthesisStatusIntegration(t *testing.T) {
 			synthesisStatus: "failed",
 			expectedInOutput: []string{
 				"SUMMARY",
-				"Synthesis:",
+				"Synthesis",
 				"[X] failed",
 			},
 			notExpectedOutput: []string{},
@@ -44,7 +44,7 @@ func TestSynthesisStatusIntegration(t *testing.T) {
 				"SUMMARY",
 			},
 			notExpectedOutput: []string{
-				"Synthesis:",
+				"Synthesis",
 			},
 		},
 		{
@@ -52,7 +52,7 @@ func TestSynthesisStatusIntegration(t *testing.T) {
 			synthesisStatus: "in-progress",
 			expectedInOutput: []string{
 				"SUMMARY",
-				"Synthesis:",
+				"Synthesis",
 				"in-progress",
 			},
 			notExpectedOutput: []string{},
@@ -161,10 +161,11 @@ func TestSynthesisStatusWithOtherSections(t *testing.T) {
 	// Verify all sections are present and synthesis status is correct
 	expectedSections := []string{
 		"SUMMARY",
-		"* 4 models processed",
-		"* 3 successful, 1 failed",
-		"* Synthesis: [OK] completed",
-		"* Output directory:",
+		"4 processed",
+		"o o o x",
+		"Synthesis",
+		"[OK] completed",
+		"Output",
 		"OUTPUT FILES",
 		"model1.md",
 		"2.0K",

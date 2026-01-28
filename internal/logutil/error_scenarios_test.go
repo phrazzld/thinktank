@@ -28,17 +28,12 @@ func TestCompleteErrorScenarioHandling(t *testing.T) {
 			},
 			expectedMessages: []string{
 				"SUMMARY",
-				"* 3 models processed",
-				"* 0 successful, 3 failed",
-				"[!] All models failed to process",
-				"* Check your API keys and network connectivity",
-				"* Review error details above for specific failure reasons",
-				"* Verify model names and rate limits with providers",
+				"3 processed",
+				"x x x",
+				"All models failed - review errors above",
 			},
 			notExpectedMsg: []string{
-				"Partial success",
-				"All models processed successfully",
-				"Success rate:",
+				"Synthesis",
 			},
 		},
 		{
@@ -52,17 +47,14 @@ func TestCompleteErrorScenarioHandling(t *testing.T) {
 			},
 			expectedMessages: []string{
 				"SUMMARY",
-				"* 5 models processed",
-				"* 3 successful, 2 failed",
-				"* Synthesis: [OK] completed",
-				"[!] Partial success - some models failed",
-				"* Success rate: 60% (3/5 models)",
-				"* Check failed model details above for specific issues",
-				"* Consider retrying failed models or adjusting configuration",
+				"5 processed",
+				"o o o x x",
+				"Synthesis",
+				"[OK] completed",
+				"2 models failed - review errors above",
 			},
 			notExpectedMsg: []string{
-				"All models failed to process",
-				"All models processed successfully",
+				"All models failed",
 			},
 		},
 		{
@@ -76,16 +68,13 @@ func TestCompleteErrorScenarioHandling(t *testing.T) {
 			},
 			expectedMessages: []string{
 				"SUMMARY",
-				"* 4 models processed",
-				"* 4 successful, 0 failed",
-				"* Synthesis: [OK] completed",
-				"[OK] All models processed successfully",
-				"* Synthesis completed - check the combined output above",
+				"4 processed",
+				"o o o o",
+				"Synthesis",
+				"[OK] completed",
 			},
 			notExpectedMsg: []string{
-				"All models failed to process",
-				"Partial success",
-				"Individual model outputs saved",
+				"failed - review errors above",
 			},
 		},
 		{
@@ -99,15 +88,12 @@ func TestCompleteErrorScenarioHandling(t *testing.T) {
 			},
 			expectedMessages: []string{
 				"SUMMARY",
-				"* 2 models processed",
-				"* 2 successful, 0 failed",
-				"[OK] All models processed successfully",
-				"* Individual model outputs saved - see file list above",
+				"2 processed",
+				"o o",
 			},
 			notExpectedMsg: []string{
-				"All models failed to process",
-				"Partial success",
-				"Synthesis completed",
+				"Synthesis",
+				"failed - review errors above",
 			},
 		},
 		{
@@ -121,14 +107,12 @@ func TestCompleteErrorScenarioHandling(t *testing.T) {
 			},
 			expectedMessages: []string{
 				"SUMMARY",
-				"* 1 models processed",
-				"* 1 successful, 0 failed",
-				"[OK] All models processed successfully",
+				"1 processed",
+				"o",
 			},
 			notExpectedMsg: []string{
-				"All models failed to process",
-				"Partial success",
-				"Individual model outputs saved", // Should not appear for single model
+				"Synthesis",
+				"failed - review errors above",
 			},
 		},
 	}
@@ -173,63 +157,6 @@ func TestCompleteErrorScenarioHandling(t *testing.T) {
 			}
 
 			fmt.Printf("Test %s output:\n%s\n", tt.name, output)
-		})
-	}
-}
-
-// TestSuccessRateCalculation verifies that success rate calculations are accurate
-func TestSuccessRateCalculation(t *testing.T) {
-	testCases := []struct {
-		name         string
-		successful   int
-		total        int
-		expectedRate string
-	}{
-		{"75% Success", 3, 4, "75%"},
-		{"50% Success", 2, 4, "50%"},
-		{"33% Success", 1, 3, "33%"},
-		{"67% Success", 2, 3, "67%"},
-		{"80% Success", 4, 5, "80%"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Capture stdout for testing
-			old := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-
-			summaryData := SummaryData{
-				ModelsProcessed:  tc.total,
-				SuccessfulModels: tc.successful,
-				FailedModels:     tc.total - tc.successful,
-				SynthesisStatus:  "skipped",
-				OutputDirectory:  "/tmp/output",
-			}
-
-			// Create console writer
-			writer := NewConsoleWriterWithOptions(ConsoleWriterOptions{
-				IsTerminalFunc:  func() bool { return false },
-				GetTermSizeFunc: func() (int, int, error) { return 80, 24, nil },
-				GetEnvFunc:      func(key string) string { return "" },
-			})
-
-			// Call ShowSummarySection
-			writer.ShowSummarySection(summaryData)
-
-			// Restore stdout and read captured output
-			_ = w.Close()
-			os.Stdout = old
-
-			buf := new(bytes.Buffer)
-			_, _ = buf.ReadFrom(r)
-			output := buf.String()
-
-			// Verify success rate calculation
-			expectedSuccessLine := fmt.Sprintf("* Success rate: %s (%d/%d models)", tc.expectedRate, tc.successful, tc.total)
-			if !strings.Contains(output, expectedSuccessLine) {
-				t.Errorf("Expected success rate line %q not found in output:\n%s", expectedSuccessLine, output)
-			}
 		})
 	}
 }

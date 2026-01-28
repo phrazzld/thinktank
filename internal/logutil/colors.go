@@ -9,6 +9,15 @@ import (
 	"golang.org/x/term"
 )
 
+// Color semantic purposes:
+// - Blue (#3B82F6): Model names, interactive elements
+// - Cyan (#06B6D4): Processing state, info
+// - Green (#22C55E): Success, completion
+// - Yellow (#FBBF24): Warnings, rate limits
+// - Red (#EF4444): Errors, failures
+// - Gray (#9CA3AF): Muted: timing, paths, separators
+// - White (#FFFFFF): Section headers (bold)
+
 // ColorScheme defines the color palette for modern clean CLI output.
 // It provides semantic color mapping for different types of output elements,
 // automatically adapting between interactive (colored) and CI (uncolored) environments.
@@ -17,6 +26,7 @@ type ColorScheme struct {
 	Success       lipgloss.Style     // Green for success indicators
 	Warning       lipgloss.Style     // Yellow for warning indicators
 	Error         lipgloss.Style     // Red for error indicators
+	Info          lipgloss.Style     // Cyan for processing indicators
 	Duration      lipgloss.Style     // Gray for timing information
 	FileSize      lipgloss.Style     // Gray for file size information
 	FilePath      lipgloss.Style     // Default/white for file paths
@@ -30,15 +40,17 @@ type ColorScheme struct {
 
 // createStylesForRenderer creates lipgloss styles bound to a specific renderer.
 // This ensures colors work even when running in non-TTY environments (like tests).
-func createStylesForRenderer(r *lipgloss.Renderer) (modelName, success, warning, errorStyle, muted, sectionHeader, noStyle lipgloss.Style) {
+func createStylesForRenderer(r *lipgloss.Renderer) (modelName, success, warning, errorStyle, info, muted, sectionHeader, noStyle lipgloss.Style) {
 	modelName = r.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: "#5B4FF3", Dark: "#7C6FFF"})
+		Foreground(lipgloss.AdaptiveColor{Light: "#2563EB", Dark: "#3B82F6"})
 	success = r.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "#16A34A", Dark: "#22C55E"})
 	warning = r.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "#D97706", Dark: "#FBBF24"})
 	errorStyle = r.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "#DC2626", Dark: "#EF4444"})
+	info = r.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#0891B2", Dark: "#06B6D4"})
 	muted = r.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "#6B7280", Dark: "#9CA3AF"})
 	sectionHeader = r.NewStyle().
@@ -56,12 +68,13 @@ func NewColorScheme(interactive bool) *ColorScheme {
 		// Non-interactive mode: use ASCII profile (no colors)
 		r := lipgloss.NewRenderer(os.Stdout)
 		r.SetColorProfile(termenv.Ascii)
-		_, _, _, _, _, _, noStyle := createStylesForRenderer(r)
+		_, _, _, _, _, _, _, noStyle := createStylesForRenderer(r)
 		return &ColorScheme{
 			ModelName:     noStyle,
 			Success:       noStyle,
 			Warning:       noStyle,
 			Error:         noStyle,
+			Info:          noStyle,
 			Duration:      noStyle,
 			FileSize:      noStyle,
 			FilePath:      noStyle,
@@ -79,13 +92,14 @@ func NewColorScheme(interactive bool) *ColorScheme {
 	r := lipgloss.NewRenderer(os.Stdout)
 	r.SetColorProfile(termenv.TrueColor)
 	r.SetHasDarkBackground(true)
-	modelName, success, warning, errorStyle, muted, sectionHeader, noStyle := createStylesForRenderer(r)
+	modelName, success, warning, errorStyle, info, muted, sectionHeader, noStyle := createStylesForRenderer(r)
 
 	return &ColorScheme{
 		ModelName:     modelName,
 		Success:       success,
 		Warning:       warning,
 		Error:         errorStyle,
+		Info:          info,
 		Duration:      muted,
 		FileSize:      muted,
 		FilePath:      muted, // Changed to gray for muted appearance
@@ -138,6 +152,11 @@ func (cs *ColorScheme) ColorWarning(text string) string {
 // Error applies the error color to text
 func (cs *ColorScheme) ColorError(text string) string {
 	return cs.applyStyle(cs.Error, text)
+}
+
+// Info applies the info color to text
+func (cs *ColorScheme) ColorInfo(text string) string {
+	return cs.applyStyle(cs.Info, text)
 }
 
 // Duration applies the duration color to text

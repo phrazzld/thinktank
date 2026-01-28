@@ -412,8 +412,13 @@ func setupOutputDirectory(ctx context.Context, cliConfig *config.CliConfig, logg
 		logger.InfoContext(ctx, "Generated output directory: %s", cliConfig.OutputDir)
 	}
 
+	perms := cliConfig.DirPermissions
+	if perms == 0 {
+		perms = 0755
+	}
+
 	// Ensure the output directory exists
-	if err := os.MkdirAll(cliConfig.OutputDir, cliConfig.DirPermissions); err != nil {
+	if err := os.MkdirAll(cliConfig.OutputDir, perms); err != nil {
 		logger.ErrorContext(ctx, "Error creating output directory %s: %v", cliConfig.OutputDir, err)
 		return fmt.Errorf("%w: error creating output directory %s: %v", ErrInvalidOutputDir, cliConfig.OutputDir, err)
 	}

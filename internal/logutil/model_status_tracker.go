@@ -76,9 +76,13 @@ func (t *ModelStatusTracker) UpdateStatus(modelName string, status ModelStatus, 
 	defer t.mu.Unlock()
 
 	if model, exists := t.models[modelName]; exists {
+		wasRateLimited := model.Status == StatusRateLimited
 		model.Status = status
 		model.Duration = duration
 		model.ErrorMsg = errorMsg
+		if wasRateLimited && status != StatusRateLimited {
+			model.RetryAfter = 0
+		}
 		model.UpdateTime = time.Now()
 	}
 }

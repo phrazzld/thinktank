@@ -71,6 +71,10 @@ func TestModelStatusTracker(t *testing.T) {
 	if !tracker.IsAllComplete() {
 		t.Error("Expected IsAllComplete to be true with all models completed or failed")
 	}
+	states = tracker.GetAllStates()
+	if states[0].RetryAfter != 0 {
+		t.Errorf("Expected retry after to clear after completion, got %v", states[0].RetryAfter)
+	}
 
 	// Test summary
 	summary := tracker.GetSummary()
