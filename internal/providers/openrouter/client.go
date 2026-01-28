@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // openrouterClient implements the llm.LLMClient interface for OpenRouter
@@ -330,7 +330,7 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
 
 	// Set optional headers recommended by OpenRouter for better routing and visibility
-	req.Header.Set("HTTP-Referer", "https://github.com/phrazzld/thinktank")
+	req.Header.Set("HTTP-Referer", "https://github.com/misty-step/thinktank")
 	req.Header.Set("X-Title", "thinktank")
 
 	// Execute the request

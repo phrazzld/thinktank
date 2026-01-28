@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/testutil/perftest"
+	"github.com/misty-step/thinktank/internal/testutil/perftest"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/time/rate"
 )

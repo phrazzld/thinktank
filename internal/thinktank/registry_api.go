@@ -8,12 +8,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/models"
-	"github.com/phrazzld/thinktank/internal/providers"
-	openrouterprovider "github.com/phrazzld/thinktank/internal/providers/openrouter"
-	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/models"
+	"github.com/misty-step/thinktank/internal/providers"
+	openrouterprovider "github.com/misty-step/thinktank/internal/providers/openrouter"
+	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
 )
 
 // registryAPIService implements the APIService interface using the models package

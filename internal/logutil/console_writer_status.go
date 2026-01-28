@@ -3,7 +3,7 @@ package logutil
 import (
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/models"
+	"github.com/misty-step/thinktank/internal/models"
 )
 
 // Status Tracking Implementation

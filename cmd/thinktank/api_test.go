@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // mockLogger for testing

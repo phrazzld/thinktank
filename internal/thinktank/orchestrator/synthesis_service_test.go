@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/llm"
 )
 
 // MockSynthesisAPIService is a specialized mock for testing synthesis

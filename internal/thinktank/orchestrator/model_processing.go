@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/models"
-	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
-	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/models"
+	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
+	"github.com/misty-step/thinktank/internal/thinktank/modelproc"
 )
 
 // processModelsWithErrorHandling processes models and handles any errors that occur.

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/testutil"
+	"github.com/misty-step/thinktank/internal/testutil"
 )
 
 // ----- Test Helper Functions -----

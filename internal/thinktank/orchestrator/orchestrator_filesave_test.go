@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/fileutil"
-	"github.com/phrazzld/thinktank/internal/ratelimit"
-	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
-	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
+	"github.com/misty-step/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/fileutil"
+	"github.com/misty-step/thinktank/internal/ratelimit"
+	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
+	"github.com/misty-step/thinktank/internal/thinktank/modelproc"
 )
 
 // MockFileWriter that simulates failures based on file path

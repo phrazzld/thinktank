@@ -8,8 +8,8 @@ import (
 	"github.com/leanovate/gopter/gen"
 	"github.com/leanovate/gopter/prop"
 
-	"github.com/phrazzld/thinktank/internal/testutil"
-	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
+	"github.com/misty-step/thinktank/internal/testutil"
+	"github.com/misty-step/thinktank/internal/thinktank/modelproc"
 )
 
 // TestSanitizeFilename_Properties verifies invariants of the SanitizeFilename function

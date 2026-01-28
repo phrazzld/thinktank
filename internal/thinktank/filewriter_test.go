@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/auditlog"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/testutil"
-	"github.com/phrazzld/thinktank/internal/thinktank"
+	"github.com/misty-step/thinktank/internal/auditlog"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/testutil"
+	"github.com/misty-step/thinktank/internal/thinktank"
 )
 
 // mockAuditLogger for testing FileWriter

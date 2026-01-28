@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/auditlog"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/thinktank"
+	"github.com/misty-step/thinktank/internal/auditlog"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/thinktank"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

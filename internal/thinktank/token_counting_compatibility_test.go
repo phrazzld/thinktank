@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/testutil"
-	"github.com/phrazzld/thinktank/internal/thinktank/tokenizers"
+	"github.com/misty-step/thinktank/internal/testutil"
+	"github.com/misty-step/thinktank/internal/thinktank/tokenizers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

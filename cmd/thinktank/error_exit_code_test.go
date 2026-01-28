@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/auditlog"
-	"github.com/phrazzld/thinktank/internal/cli"
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/thinktank"
+	"github.com/misty-step/thinktank/internal/auditlog"
+	"github.com/misty-step/thinktank/internal/cli"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/thinktank"
 )
 
 // Define a variable to capture exit codes without actually exiting

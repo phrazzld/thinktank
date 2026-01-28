@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/phrazzld/thinktank/internal/auditlog"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
-	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
+	"github.com/misty-step/thinktank/internal/auditlog"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
+	"github.com/misty-step/thinktank/internal/thinktank/modelproc"
 )
 
 // OutputWriter handles writing model outputs to files

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // SimpleTestLogger is a simplified test logger for unit tests

@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/testutil"
+	"github.com/misty-step/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/testutil"
 )
 
 // TestHandleProcessingOutcome tests the handleProcessingOutcome function

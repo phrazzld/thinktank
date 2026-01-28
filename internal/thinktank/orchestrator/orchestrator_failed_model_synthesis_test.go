@@ -5,11 +5,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/ratelimit"
-	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
+	"github.com/misty-step/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/ratelimit"
+	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
 )
 
 // TestSynthesizeResultsWithFailedModels verifies that the orchestrator

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/models"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/models"
 )
 
 // TestAPIServiceContractVerification ensures that a correct implementation

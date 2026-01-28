@@ -12,13 +12,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/auditlog"
-	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/ratelimit"
-	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
-	"github.com/phrazzld/thinktank/internal/thinktank/orchestrator"
+	"github.com/misty-step/thinktank/internal/auditlog"
+	"github.com/misty-step/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/ratelimit"
+	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
+	"github.com/misty-step/thinktank/internal/thinktank/orchestrator"
 )
 
 // Deprecated: Using a global var here as a temporary fix during refactoring

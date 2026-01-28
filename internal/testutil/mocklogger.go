@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/auditlog"
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/auditlog"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // MockLogger implements both logutil.LoggerInterface and auditlog.AuditLogger

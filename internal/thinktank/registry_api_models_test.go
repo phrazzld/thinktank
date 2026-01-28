@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/models"
-	"github.com/phrazzld/thinktank/internal/testutil"
+	"github.com/misty-step/thinktank/internal/models"
+	"github.com/misty-step/thinktank/internal/testutil"
 )
 
 // TestRegistryAPIWithModelsPackage verifies that RegistryAPIService works correctly

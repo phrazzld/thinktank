@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/llm"
 )
 
 // TestBoundaryMocking verifies that we can properly mock external boundaries

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // TestAuditLogger_Context tests the context-aware methods of AuditLogger

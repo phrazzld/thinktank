@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

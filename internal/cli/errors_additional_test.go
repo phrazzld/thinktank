@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/llm"
 )
 
 func TestNewNoAPIKeyErrorAllProviders(t *testing.T) {

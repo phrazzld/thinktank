@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/testutil"
+	"github.com/misty-step/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/testutil"
 )
 
 // This test file uses the MockAuditLogger defined in mocks_test.go

@@ -2,7 +2,7 @@
 package main
 
 import (
-	"github.com/phrazzld/thinktank/internal/cli"
+	"github.com/misty-step/thinktank/internal/cli"
 )
 
 // All error handling functions are now in internal/cli package to eliminate duplication

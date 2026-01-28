@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/models"
+	"github.com/misty-step/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/models"
 )
 
 // TestSynthesisModelParsing tests that the synthesis model flag is correctly

@@ -2,7 +2,7 @@
 // This file exists for backward compatibility - the main CLI is in cmd/thinktank/
 package main
 
-import "github.com/phrazzld/thinktank/internal/cli"
+import "github.com/misty-step/thinktank/internal/cli"
 
 func main() {
 	// Delegate directly to the main CLI implementation

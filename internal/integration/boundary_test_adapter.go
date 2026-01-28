@@ -13,15 +13,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/auditlog"
-	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/fileutil"
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/models"
-	"github.com/phrazzld/thinktank/internal/ratelimit"
-	"github.com/phrazzld/thinktank/internal/thinktank"
-	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
+	"github.com/misty-step/thinktank/internal/auditlog"
+	"github.com/misty-step/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/fileutil"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/models"
+	"github.com/misty-step/thinktank/internal/ratelimit"
+	"github.com/misty-step/thinktank/internal/thinktank"
+	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
 )
 
 // BoundaryTestEnv represents a test environment where only external boundaries are mocked

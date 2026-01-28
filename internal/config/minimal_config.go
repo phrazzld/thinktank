@@ -3,7 +3,7 @@
 package config
 
 import (
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/logutil"
 	"time"
 )
 

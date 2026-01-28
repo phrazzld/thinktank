@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/models"
-	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
-	"github.com/phrazzld/thinktank/internal/thinktank/tokenizers"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/models"
+	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
+	"github.com/misty-step/thinktank/internal/thinktank/tokenizers"
 )
 
 // TokenCountingService alias to avoid import cycles.

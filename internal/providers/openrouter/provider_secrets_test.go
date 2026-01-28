@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/providers/openrouter"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/providers/openrouter"
 )
 
 func TestOpenRouterProviderSecretHandling(t *testing.T) {

@@ -11,9 +11,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/ratelimit"
-	"github.com/phrazzld/thinktank/internal/testutil"
+	"github.com/misty-step/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/ratelimit"
+	"github.com/misty-step/thinktank/internal/testutil"
 )
 
 // TestGetRateLimiterForModel tests the getRateLimiterForModel function comprehensively

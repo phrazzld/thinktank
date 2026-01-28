@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 func TestNewDefaultMinimalConfig(t *testing.T) {

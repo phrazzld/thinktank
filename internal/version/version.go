@@ -6,9 +6,9 @@ import "fmt"
 
 // Build-time variables injected via ldflags:
 //
-//	-X github.com/phrazzld/thinktank/internal/version.Version=v1.2.3
-//	-X github.com/phrazzld/thinktank/internal/version.Commit=abc1234
-//	-X github.com/phrazzld/thinktank/internal/version.BuildDate=2025-01-13T...
+//	-X github.com/misty-step/thinktank/internal/version.Version=v1.2.3
+//	-X github.com/misty-step/thinktank/internal/version.Commit=abc1234
+//	-X github.com/misty-step/thinktank/internal/version.BuildDate=2025-01-13T...
 var (
 	// Version is the semantic version (e.g., "v1.2.3" or "dev" for development builds)
 	Version = "dev"

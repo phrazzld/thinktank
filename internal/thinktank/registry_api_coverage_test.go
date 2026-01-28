@@ -6,9 +6,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/testutil"
+	"github.com/misty-step/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/testutil"
 )
 
 // TestRegistryAPICoverageBoost adds tests for functions that were missing coverage

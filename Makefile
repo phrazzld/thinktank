@@ -19,9 +19,9 @@ VERSION ?= dev
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 LDFLAGS := -s -w \
-	-X github.com/phrazzld/thinktank/internal/version.Version=$(VERSION) \
-	-X github.com/phrazzld/thinktank/internal/version.Commit=$(COMMIT) \
-	-X github.com/phrazzld/thinktank/internal/version.BuildDate=$(BUILD_DATE)
+	-X github.com/misty-step/thinktank/internal/version.Version=$(VERSION) \
+	-X github.com/misty-step/thinktank/internal/version.Commit=$(COMMIT) \
+	-X github.com/misty-step/thinktank/internal/version.BuildDate=$(BUILD_DATE)
 
 .PHONY: help
 help: ## Show this help message
@@ -97,7 +97,7 @@ test: ## Run all tests (unit, integration, E2E)
 	@echo "  - Running integration tests..."
 	@go test -v -race -short -parallel 4 ./internal/integration/...
 	@echo "  - Running unit tests..."
-	@go test -v -race -short $$(go list ./... | grep -v "github.com/phrazzld/thinktank/internal/integration" | grep -v "github.com/phrazzld/thinktank/internal/e2e")
+	@go test -v -race -short $$(go list ./... | grep -v "github.com/misty-step/thinktank/internal/integration" | grep -v "github.com/misty-step/thinktank/internal/e2e")
 	@echo "  - Running E2E tests..."
 	@./internal/e2e/run_e2e_tests.sh
 	@echo "$(GREEN)✅ All tests passed$(NC)"

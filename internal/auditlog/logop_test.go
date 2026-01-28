@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/llm"
 )
 
 // TestFileAuditLogger_LogOp tests the LogOp method of FileAuditLogger

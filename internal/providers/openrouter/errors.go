@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/llm"
 )
 
 // APIErrorResponse represents the error structure returned by the OpenRouter API

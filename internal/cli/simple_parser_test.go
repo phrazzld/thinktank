@@ -9,7 +9,7 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/phrazzld/thinktank/internal/testutil/perftest"
+	"github.com/misty-step/thinktank/internal/testutil/perftest"
 )
 
 // TestParseSimpleArgsWithArgs_Basic tests the core functionality with minimal valid cases

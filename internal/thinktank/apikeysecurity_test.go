@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // TestAPIKeyLoggingSecurity tests that the logging never includes API key fragments

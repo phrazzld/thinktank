@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/llm"
 )
 
 // ExternalAPICaller represents the external boundary for API calls to LLM providers

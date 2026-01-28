@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // TestParseFlags_UnknownFlag tests parsing an unknown flag

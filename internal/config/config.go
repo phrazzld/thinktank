@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // Configuration constants

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/phrazzld/thinktank/internal/models"
+	"github.com/misty-step/thinktank/internal/models"
 )
 
 // ParseSimpleArgs parses the simplified command line interface in O(n) time using os.Args.

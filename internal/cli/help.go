@@ -148,6 +148,6 @@ EXIT CODES:
     10   Cancelled - operation interrupted by user
 
 MORE INFORMATION:
-    Documentation: https://github.com/phrazzld/thinktank
-    Report issues: https://github.com/phrazzld/thinktank/issues
+    Documentation: https://github.com/misty-step/thinktank
+    Report issues: https://github.com/misty-step/thinktank/issues
 `

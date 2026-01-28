@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/config"
 )
 
 func TestFormatWithCommas(t *testing.T) {

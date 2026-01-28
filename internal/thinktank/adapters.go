@@ -4,9 +4,9 @@ package thinktank
 import (
 	"context"
 
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/models"
-	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/models"
+	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
 )
 
 // APIServiceAdapter provides an adapter for different APIService implementations

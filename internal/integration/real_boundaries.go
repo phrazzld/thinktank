@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/llm"
 )
 
 // RealFilesystemIO implements the FilesystemIO interface with real OS operations

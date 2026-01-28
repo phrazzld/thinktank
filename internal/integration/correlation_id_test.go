@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // TestCorrelationIDPropagation verifies that correlation IDs are properly propagated

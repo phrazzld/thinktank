@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/phrazzld/thinktank/internal/models"
+	"github.com/misty-step/thinktank/internal/models"
 )
 
 // SimplifiedConfig represents the essential configuration in exactly 34 bytes.

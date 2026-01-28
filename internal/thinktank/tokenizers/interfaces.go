@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/llm"
 )
 
 // AccurateTokenCounter provides model-specific accurate token counting.

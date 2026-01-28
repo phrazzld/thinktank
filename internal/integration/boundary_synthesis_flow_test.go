@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/thinktank/modelproc"
 )
 
 // TestBoundarySynthesisFlow tests the complete flow with synthesis model using boundary mocks

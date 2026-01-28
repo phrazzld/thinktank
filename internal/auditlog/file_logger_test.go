@@ -11,7 +11,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // mockLogger implements the logutil.LoggerInterface for testing

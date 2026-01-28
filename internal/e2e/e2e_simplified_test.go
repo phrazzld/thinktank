@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/cli"
+	"github.com/misty-step/thinktank/internal/cli"
 )
 
 // TestSimplifiedInterfaceE2E tests the simplified CLI interface end-to-end

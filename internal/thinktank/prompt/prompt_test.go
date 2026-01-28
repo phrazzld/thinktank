@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/fileutil"
-	"github.com/phrazzld/thinktank/internal/thinktank/prompt"
+	"github.com/misty-step/thinktank/internal/fileutil"
+	"github.com/misty-step/thinktank/internal/thinktank/prompt"
 )
 
 // TestEscapeContent tests the XML escaping helper function

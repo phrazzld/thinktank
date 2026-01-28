@@ -6,10 +6,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/phrazzld/thinktank/internal/fileutil"
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/models"
-	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
+	"github.com/misty-step/thinktank/internal/fileutil"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/models"
+	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
 )
 
 // MockAPIServiceForAdapter is a testing mock for the APIService interface, specifically for adapter tests

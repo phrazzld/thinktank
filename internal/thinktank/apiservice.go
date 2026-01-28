@@ -2,7 +2,7 @@
 package thinktank
 
 import (
-	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
+	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
 )
 
 // APIService is a type alias for interfaces.APIService to avoid circular imports

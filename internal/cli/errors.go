@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/llm"
 )
 
 // CLI error constants - these are sentinel errors for common CLI scenarios

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
+	"github.com/misty-step/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/thinktank/modelproc"
 )
 
 // TestProcess_GetModelParametersError tests handling when GetModelParameters fails

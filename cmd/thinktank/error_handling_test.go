@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/llm"
 )
 
 // TestGetFriendlyErrorMessage has been moved to internal/cli package

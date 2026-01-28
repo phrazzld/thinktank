@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/llm"
 )
 
 // TestCreateStandardErrorWithMessage tests the creation of user-friendly error messages based on category

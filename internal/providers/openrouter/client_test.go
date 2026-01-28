@@ -11,7 +11,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/logutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

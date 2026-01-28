@@ -7,9 +7,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/auditlog"
-	"github.com/phrazzld/thinktank/internal/testutil"
-	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
+	"github.com/misty-step/thinktank/internal/auditlog"
+	"github.com/misty-step/thinktank/internal/testutil"
+	"github.com/misty-step/thinktank/internal/thinktank/modelproc"
 )
 
 // mockFileWriter implements the interfaces.FileWriter interface for testing

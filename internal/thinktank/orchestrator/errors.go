@@ -7,7 +7,7 @@ package orchestrator
 import (
 	"errors"
 
-	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/llm"
 )
 
 // Sentinel errors for synthesis and model processing failures.

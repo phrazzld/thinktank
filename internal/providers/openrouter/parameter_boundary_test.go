@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/logutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // Color codes for terminal output

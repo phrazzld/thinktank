@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/testutil"
-	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/testutil"
+	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
 )
 
 // mockConsoleWriter is a simple mock implementation of ConsoleWriter for testing

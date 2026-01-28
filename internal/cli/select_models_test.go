@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/thinktank"
+	"github.com/misty-step/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/thinktank"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

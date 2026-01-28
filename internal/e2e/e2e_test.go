@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // thinktankBinaryPath stores the path to the compiled binary, set once in TestMain

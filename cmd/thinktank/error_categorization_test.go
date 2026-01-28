@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/llm"
 )
 
 // TestErrorCategorization tests the error categorization functionality

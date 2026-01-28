@@ -3,7 +3,7 @@ package modelproc_test
 import (
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
+	"github.com/misty-step/thinktank/internal/thinktank/modelproc"
 )
 
 // TestSanitizeFilename tests the filename sanitization function

@@ -19,3 +19,4 @@ repos:
     hooks:
     -   id: go-fmt
     -   id: go-vet
+        exclude: ^internal/(e2e|lint)/

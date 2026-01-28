@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/mattn/go-runewidth"
-	"github.com/phrazzld/thinktank/internal/pathutil"
+	"github.com/misty-step/thinktank/internal/pathutil"
 	"golang.org/x/term"
 )
 

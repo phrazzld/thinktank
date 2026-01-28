@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/models"
-	"github.com/phrazzld/thinktank/internal/ratelimit"
+	"github.com/misty-step/thinktank/internal/models"
+	"github.com/misty-step/thinktank/internal/ratelimit"
 )
 
 // Provider-specific rate limit constants - matches models.GetProviderDefaultRateLimit()

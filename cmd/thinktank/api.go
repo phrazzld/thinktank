@@ -2,10 +2,10 @@
 package main
 
 import (
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/thinktank"
-	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/thinktank"
+	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
 )
 
 // Re-export error types from internal/llm for backward compatibility with tests

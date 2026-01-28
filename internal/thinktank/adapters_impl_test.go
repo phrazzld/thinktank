@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/models"
+	"github.com/misty-step/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/models"
 )
 
 // setupAPIServiceAdapterTest creates test fixtures for APIServiceAdapter testing

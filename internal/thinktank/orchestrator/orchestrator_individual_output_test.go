@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // MockOutputWriter allows controlling output writer behavior for testing

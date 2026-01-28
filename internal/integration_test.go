@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/fileutil"
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/fileutil"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // TestConsoleWriterFunctionComposition verifies that extracted console writer functions

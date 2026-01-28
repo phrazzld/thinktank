@@ -3,7 +3,7 @@ package testutil
 import (
 	"context"
 
-	"github.com/phrazzld/thinktank/internal/thinktank/tokenizers"
+	"github.com/misty-step/thinktank/internal/thinktank/tokenizers"
 )
 
 // MockTokenizerManager implements TokenizerManager for testing.

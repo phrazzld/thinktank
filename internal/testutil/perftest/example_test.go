@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/testutil/perftest"
+	"github.com/misty-step/thinktank/internal/testutil/perftest"
 )
 
 // Example 1: Basic throughput test

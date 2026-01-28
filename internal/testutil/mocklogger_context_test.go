@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/auditlog"
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/auditlog"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // TestMockLoggerWithContext tests context handling in MockLogger

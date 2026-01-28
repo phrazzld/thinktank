@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/testutil/perftest"
+	"github.com/misty-step/thinktank/internal/config"
+	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/testutil/perftest"
 )
 
 // BenchmarkParseFlags benchmarks the CLI flag parsing functionality

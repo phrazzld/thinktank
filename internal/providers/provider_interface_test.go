@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/misty-step/thinktank/internal/llm"
 )
 
 // TestProviderInterfaceBoundaries verifies that the Provider interface boundaries

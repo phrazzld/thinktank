@@ -6,7 +6,7 @@ A context-aware LLM tool that analyzes codebases and generates responses to your
 
 ```bash
 # Installation
-git clone https://github.com/phrazzld/thinktank.git
+git clone https://github.com/misty-step/thinktank.git
 cd thinktank
 go install
 

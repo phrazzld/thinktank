@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/testutil/perftest"
+	"github.com/misty-step/thinktank/internal/testutil/perftest"
 )
 
 func TestEstimateTokensFromText(t *testing.T) {

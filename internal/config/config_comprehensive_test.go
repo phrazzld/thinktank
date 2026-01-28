@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/logutil"
 )
 
 // TestCliConfigValidationScenarios tests comprehensive CLI configuration validation scenarios

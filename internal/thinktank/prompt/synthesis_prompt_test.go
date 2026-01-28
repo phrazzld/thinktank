@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/thinktank/internal/thinktank/prompt"
+	"github.com/misty-step/thinktank/internal/thinktank/prompt"
 )
 
 // TestStitchSynthesisPrompt tests the synthesis prompt creation function

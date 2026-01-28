@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/phrazzld/thinktank/internal/fileutil"
+	"github.com/misty-step/thinktank/internal/fileutil"
 )
 
 // EscapeContent previously escaped XML-like characters, but this was determined to be incorrect
