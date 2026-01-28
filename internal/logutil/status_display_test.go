@@ -8,6 +8,7 @@ import (
 
 func TestStatusDisplay_Basic(t *testing.T) {
 	display := NewStatusDisplay(true) // Interactive mode
+	t.Cleanup(display.Stop)           // Prevent goroutine leak
 
 	// Create test model states
 	states := []*ModelState{
@@ -64,6 +65,7 @@ func TestStatusDisplay_NonInteractive(t *testing.T) {
 
 func TestStatusDisplay_FormatModelLine(t *testing.T) {
 	display := NewStatusDisplay(true)
+	t.Cleanup(display.Stop) // Prevent goroutine leak
 	display.terminalWidth = 80
 
 	testCases := []struct {
@@ -136,6 +138,7 @@ func TestStatusDisplay_FormatModelLine(t *testing.T) {
 
 func TestStatusDisplay_ZeroPadding(t *testing.T) {
 	display := NewStatusDisplay(true)
+	t.Cleanup(display.Stop) // Prevent goroutine leak
 
 	testCases := []struct {
 		index       int
@@ -166,6 +169,7 @@ func TestStatusDisplay_ZeroPadding(t *testing.T) {
 
 func TestStatusDisplay_GetDisplayWidth(t *testing.T) {
 	display := NewStatusDisplay(true)
+	t.Cleanup(display.Stop) // Prevent goroutine leak
 
 	testCases := []struct {
 		input    string
