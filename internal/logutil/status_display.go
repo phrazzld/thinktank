@@ -220,6 +220,20 @@ func truncateWithEllipsis(text string, maxWidth int) string {
 
 // formatIndicator creates a fixed-width leading indicator for the model state
 func (d *StatusDisplay) formatIndicator(state *ModelState) string {
+	// ASCII fallback for non-interactive mode
+	if !d.isInteractive {
+		switch state.Status {
+		case StatusRateLimited:
+			return "  ! "
+		case StatusCompleted:
+			return "  v "
+		case StatusFailed:
+			return "  x "
+		default:
+			return "  . "
+		}
+	}
+
 	switch state.Status {
 	case StatusQueued:
 		return d.formatProcessingIndicator()
@@ -246,7 +260,7 @@ func (d *StatusDisplay) formatIndicator(state *ModelState) string {
 
 func (d *StatusDisplay) formatProcessingIndicator() string {
 	if !d.isInteractive {
-		return "  … "
+		return "  . "
 	}
 
 	d.mu.Lock()
@@ -415,7 +429,7 @@ func (g *GridProgress) Render(percent float64) string {
 	// Use ASCII characters for non-interactive mode
 	filledChar := "█"
 	emptyChar := "░"
-	if g.colors == nil {
+	if g.colors == nil || !g.colors.enabled {
 		filledChar = "="
 		emptyChar = "-"
 	}

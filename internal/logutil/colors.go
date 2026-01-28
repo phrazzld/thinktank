@@ -16,7 +16,7 @@ import (
 // - Yellow (#FBBF24): Warnings, rate limits
 // - Red (#EF4444): Errors, failures
 // - Gray (#9CA3AF): Muted: timing, paths, separators
-// - White (#FFFFFF): Section headers (bold)
+// - Adaptive (#1F2937/#FFFFFF): Section headers (bold, dark on light bg, white on dark bg)
 
 // ColorScheme defines the color palette for modern clean CLI output.
 // It provides semantic color mapping for different types of output elements,
@@ -55,7 +55,7 @@ func createStylesForRenderer(r *lipgloss.Renderer) (modelName, success, warning,
 		Foreground(lipgloss.AdaptiveColor{Light: "#6B7280", Dark: "#9CA3AF"})
 	sectionHeader = r.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#FFFFFF"})
+		Foreground(lipgloss.AdaptiveColor{Light: "#1F2937", Dark: "#FFFFFF"})
 	noStyle = r.NewStyle()
 	return
 }

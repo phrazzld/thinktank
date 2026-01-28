@@ -740,7 +740,7 @@ func (c *consoleWriter) ErrorMessage(message string) {
 	coloredReason := c.colors.ColorError(reason)
 
 	if c.isInteractive {
-		WriteToConsole("Error\n")
+		WriteToConsole("Error")
 		if modelName != "" {
 			coloredModel := c.colors.ColorModelName(modelName)
 			WriteToConsoleF("  Model: %s\n", coloredModel)
