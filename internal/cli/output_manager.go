@@ -17,6 +17,11 @@ import (
 type OutputManager struct {
 	logger logutil.LoggerInterface
 	rand   *rand.Rand
+
+	memorableOffset  int
+	memorableStride  int
+	memorableTotal   int
+	memorableCounter uint32
 }
 
 // NewOutputManager creates a new output manager instance
@@ -25,14 +30,221 @@ func NewOutputManager(logger logutil.LoggerInterface) *OutputManager {
 		logger = logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel)
 	}
 
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	total := len(adjectives) * len(verbs) * len(nouns)
+	offset := 0
+	stride := 1
+	if total > 0 {
+		offset = rng.Intn(total)
+		stride = pickCoprimeStride(rng, total)
+	}
+
 	return &OutputManager{
-		logger: logger,
-		rand:   rand.New(rand.NewSource(time.Now().UnixNano())),
+		logger:          logger,
+		rand:            rng,
+		memorableOffset: offset,
+		memorableStride: stride,
+		memorableTotal:  total,
 	}
 }
 
 // Global counter for ensuring uniqueness across concurrent operations
 var incrementalCounter uint32
+
+const (
+	memorableNameMinLength = 20
+	memorableNameMaxLength = 40
+	memorableNameAttempts  = 50
+	maxCollisionAttempts   = 10
+)
+
+var adjectives = []string{
+	"ancient",
+	"amber",
+	"auburn",
+	"azure",
+	"bright",
+	"bronze",
+	"calm",
+	"candid",
+	"cerulean",
+	"chilly",
+	"crimson",
+	"copper",
+	"cozy",
+	"dapper",
+	"distant",
+	"gentle",
+	"golden",
+	"granite",
+	"graceful",
+	"hollow",
+	"humble",
+	"indigo",
+	"jovial",
+	"lively",
+	"magenta",
+	"mellow",
+	"modern",
+	"molten",
+	"muted",
+	"nimble",
+	"oaken",
+	"orange",
+	"placid",
+	"polished",
+	"primal",
+	"proud",
+	"quiet",
+	"russet",
+	"saffron",
+	"sable",
+	"silken",
+	"silver",
+	"simple",
+	"sleek",
+	"smooth",
+	"steady",
+	"sturdy",
+	"subtle",
+	"sunlit",
+	"tender",
+	"timber",
+	"tranquil",
+	"vivid",
+	"warm",
+	"weighty",
+	"yellow",
+	"zealous",
+}
+
+var verbs = []string{
+	"ambling",
+	"baking",
+	"blooming",
+	"bouncing",
+	"building",
+	"carving",
+	"chasing",
+	"circling",
+	"climbing",
+	"cooking",
+	"curling",
+	"dancing",
+	"drifting",
+	"drumming",
+	"floating",
+	"flowing",
+	"flying",
+	"gliding",
+	"growing",
+	"hiking",
+	"humming",
+	"jumping",
+	"laughing",
+	"leaping",
+	"lifting",
+	"marching",
+	"mixing",
+	"moving",
+	"nesting",
+	"pacing",
+	"painting",
+	"playing",
+	"pouring",
+	"racing",
+	"roaming",
+	"rolling",
+	"running",
+	"sailing",
+	"scaling",
+	"seeking",
+	"shaping",
+	"shining",
+	"singing",
+	"skating",
+	"sliding",
+	"soaring",
+	"spinning",
+	"springing",
+	"stirring",
+	"streaming",
+	"striding",
+	"swinging",
+	"swirling",
+	"tending",
+	"trailing",
+	"traveling",
+	"turning",
+	"wandering",
+	"working",
+	"zooming",
+}
+
+var nouns = []string{
+	"acorn",
+	"badger",
+	"bamboo",
+	"bison",
+	"butter",
+	"canyon",
+	"cedar",
+	"cherry",
+	"comet",
+	"coral",
+	"coyote",
+	"crystal",
+	"dahlia",
+	"dolphin",
+	"falcon",
+	"forest",
+	"galaxy",
+	"garden",
+	"glacier",
+	"harbor",
+	"hazelnut",
+	"heron",
+	"juniper",
+	"kingfisher",
+	"lagoon",
+	"lantern",
+	"meadow",
+	"meteor",
+	"monarch",
+	"mountain",
+	"orchard",
+	"otter",
+	"palmier",
+	"prairie",
+	"quartz",
+	"rabbit",
+	"raven",
+	"river",
+	"rocket",
+	"saffron",
+	"satchel",
+	"savanna",
+	"sierra",
+	"sparrow",
+	"spruce",
+	"starfish",
+	"summit",
+	"thistle",
+	"tigress",
+	"truffle",
+	"tundra",
+	"valley",
+	"violet",
+	"walnut",
+	"willow",
+	"window",
+	"zephyr",
+}
+
+// Keep word lists additive to preserve cleanup recognition for older runs.
+var adjectiveSet = makeWordSet(adjectives)
+var verbSet = makeWordSet(verbs)
+var nounSet = makeWordSet(nouns)
 
 // GenerateTimestampedDirName generates a unique directory name in the format:
 // thinktank_YYYYMMDD_HHMMSS_NNNNNNNNN
@@ -66,6 +278,90 @@ func (om *OutputManager) GenerateTimestampedDirName() string {
 	return fmt.Sprintf("thinktank_%s_%09d", timestamp, uniqueNum)
 }
 
+// GenerateMemorableDirName generates a three-word memorable directory name.
+// Format: adjective-verb-noun (lowercase, hyphen-separated).
+func (om *OutputManager) GenerateMemorableDirName() string {
+	if om.memorableTotal == 0 {
+		return fmt.Sprintf("%s-%s-%s", adjectives[0], verbs[0], nouns[0])
+	}
+
+	for i := 0; i < memorableNameAttempts; i++ {
+		idx := om.nextMemorableIndex()
+		adj, verb, noun := om.memorableParts(idx)
+		name := fmt.Sprintf("%s-%s-%s", adj, verb, noun)
+		if len(name) >= memorableNameMinLength && len(name) <= memorableNameMaxLength {
+			return name
+		}
+	}
+
+	if name, ok := firstMemorableNameWithinLimits(); ok {
+		return name
+	}
+
+	return fmt.Sprintf("%s-%s-%s", adjectives[0], verbs[0], nouns[0])
+}
+
+func (om *OutputManager) nextMemorableIndex() int {
+	seq := int64(atomic.AddUint32(&om.memorableCounter, 1) - 1)
+	idx := int64(om.memorableOffset) + (seq * int64(om.memorableStride))
+	if om.memorableTotal == 0 {
+		return 0
+	}
+	return int(idx % int64(om.memorableTotal))
+}
+
+func (om *OutputManager) memorableParts(index int) (string, string, string) {
+	nounIndex := index % len(nouns)
+	verbIndex := (index / len(nouns)) % len(verbs)
+	adjIndex := (index / (len(nouns) * len(verbs))) % len(adjectives)
+	return adjectives[adjIndex], verbs[verbIndex], nouns[nounIndex]
+}
+
+func firstMemorableNameWithinLimits() (string, bool) {
+	for _, adj := range adjectives {
+		for _, verb := range verbs {
+			for _, noun := range nouns {
+				name := fmt.Sprintf("%s-%s-%s", adj, verb, noun)
+				if len(name) >= memorableNameMinLength && len(name) <= memorableNameMaxLength {
+					return name, true
+				}
+			}
+		}
+	}
+	return "", false
+}
+
+func makeWordSet(words []string) map[string]struct{} {
+	set := make(map[string]struct{}, len(words))
+	for _, word := range words {
+		set[word] = struct{}{}
+	}
+	return set
+}
+
+func pickCoprimeStride(rng *rand.Rand, total int) int {
+	if total <= 2 {
+		return 1
+	}
+
+	for {
+		stride := rng.Intn(total-1) + 1
+		if gcd(stride, total) == 1 {
+			return stride
+		}
+	}
+}
+
+func gcd(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	if a < 0 {
+		return -a
+	}
+	return a
+}
+
 // CreateOutputDirectory creates an output directory with collision detection
 // If basePath is empty, uses current working directory
 func (om *OutputManager) CreateOutputDirectory(basePath string, permissions os.FileMode) (string, error) {
@@ -79,31 +375,15 @@ func (om *OutputManager) CreateOutputDirectory(basePath string, permissions os.F
 	}
 
 	// Generate unique directory name
-	dirName := om.GenerateTimestampedDirName()
-	fullPath := filepath.Join(basePath, dirName)
-
-	// Handle collision detection with automatic incrementing
-	attempts := 0
-	maxAttempts := 10
-	originalName := dirName
-
-	for attempts < maxAttempts {
-		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-			// Path doesn't exist, we can use it
-			break
+	dirName, err := om.generateAvailableMemorableDirName(basePath, maxCollisionAttempts)
+	if err != nil {
+		om.logger.Printf("Memorable name collisions exhausted, falling back to timestamp: %v", err)
+		dirName, err = om.generateAvailableTimestampDirName(basePath, maxCollisionAttempts)
+		if err != nil {
+			return "", err
 		}
-
-		// Path exists, generate a new name
-		attempts++
-		dirName = fmt.Sprintf("%s_retry%d", originalName, attempts)
-		fullPath = filepath.Join(basePath, dirName)
-
-		om.logger.Printf("Directory collision detected, trying: %s", dirName)
 	}
-
-	if attempts >= maxAttempts {
-		return "", fmt.Errorf("failed to find unique directory name after %d attempts", maxAttempts)
-	}
+	fullPath := filepath.Join(basePath, dirName)
 
 	// Create the directory with proper permissions (0755)
 	if err := os.MkdirAll(fullPath, permissions); err != nil {
@@ -113,6 +393,62 @@ func (om *OutputManager) CreateOutputDirectory(basePath string, permissions os.F
 
 	om.logger.Printf("Created output directory: %s", fullPath)
 	return fullPath, nil
+}
+
+func (om *OutputManager) generateAvailableMemorableDirName(basePath string, maxAttempts int) (string, error) {
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		dirName := om.GenerateMemorableDirName()
+		fullPath := filepath.Join(basePath, dirName)
+		exists, err := dirExists(fullPath)
+		if err != nil {
+			return "", fmt.Errorf("failed to check directory %s: %w", fullPath, err)
+		}
+		if !exists {
+			return dirName, nil
+		}
+		om.logger.Printf("Directory collision detected, trying: %s", dirName)
+	}
+
+	return "", fmt.Errorf("failed to find unique memorable directory name after %d attempts", maxAttempts)
+}
+
+func (om *OutputManager) generateAvailableTimestampDirName(basePath string, maxAttempts int) (string, error) {
+	dirName := om.GenerateTimestampedDirName()
+	fullPath := filepath.Join(basePath, dirName)
+	exists, err := dirExists(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to check directory %s: %w", fullPath, err)
+	}
+	if !exists {
+		return dirName, nil
+	}
+
+	originalName := dirName
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		retryName := fmt.Sprintf("%s_retry%d", originalName, attempt)
+		fullPath = filepath.Join(basePath, retryName)
+		exists, err = dirExists(fullPath)
+		if err != nil {
+			return "", fmt.Errorf("failed to check directory %s: %w", fullPath, err)
+		}
+		if !exists {
+			return retryName, nil
+		}
+		om.logger.Printf("Directory collision detected, trying: %s", retryName)
+	}
+
+	return "", fmt.Errorf("failed to find unique timestamp directory name after %d attempts", maxAttempts)
+}
+
+func dirExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }
 
 // CleanupOldDirectories removes output directories older than the specified duration
@@ -176,6 +512,10 @@ func (om *OutputManager) CleanupOldDirectories(basePath string, olderThan time.D
 
 // isThinktankOutputDir checks if a directory name matches the thinktank output pattern
 func (om *OutputManager) isThinktankOutputDir(name string) bool {
+	return om.isTimestampedOutputDir(name) || om.isMemorableOutputDir(name)
+}
+
+func (om *OutputManager) isTimestampedOutputDir(name string) bool {
 	// Check if it starts with "thinktank_" and has the expected format
 	if !strings.HasPrefix(name, "thinktank_") {
 		return false
@@ -208,6 +548,40 @@ func (om *OutputManager) isThinktankOutputDir(name string) bool {
 			return false
 		}
 	} else if len(uniquePart) != 9 {
+		return false
+	}
+
+	return true
+}
+
+func (om *OutputManager) isMemorableOutputDir(name string) bool {
+	if len(name) < memorableNameMinLength || len(name) > memorableNameMaxLength {
+		return false
+	}
+
+	parts := strings.Split(name, "-")
+	if len(parts) != 3 {
+		return false
+	}
+
+	for _, part := range parts {
+		if part == "" {
+			return false
+		}
+		for _, r := range part {
+			if r < 'a' || r > 'z' {
+				return false
+			}
+		}
+	}
+
+	if _, ok := adjectiveSet[parts[0]]; !ok {
+		return false
+	}
+	if _, ok := verbSet[parts[1]]; !ok {
+		return false
+	}
+	if _, ok := nounSet[parts[2]]; !ok {
 		return false
 	}
 
