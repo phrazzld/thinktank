@@ -12,7 +12,8 @@ go install
 pre-commit install
 
 # Set API key for integration tests
-export OPENROUTER_API_KEY="your-key"
+cp .env.example .env
+# Then edit .env and add your OPENROUTER_API_KEY
 ```
 
 ## Quality Gates
