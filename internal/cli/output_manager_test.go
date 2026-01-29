@@ -207,7 +207,11 @@ func TestCreateOutputDirectory(t *testing.T) {
 		tempDir := t.TempDir()
 		err = os.Chdir(tempDir)
 		require.NoError(t, err)
-		defer func() { _ = os.Chdir(originalCwd) }()
+		t.Cleanup(func() {
+			if err := os.Chdir(originalCwd); err != nil {
+				t.Logf("Warning: failed to restore working directory: %v", err)
+			}
+		})
 
 		dirPath, err := om.CreateOutputDirectory("", 0755)
 		require.NoError(t, err)

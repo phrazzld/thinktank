@@ -299,11 +299,11 @@ func (om *OutputManager) GenerateMemorableDirName() string {
 		}
 	}
 
-	if name, ok := firstMemorableNameWithinLimits(); ok {
-		return name
-	}
-
-	return fmt.Sprintf("%s-%s-%s", adjectives[0], verbs[0], nouns[0])
+	idx := om.nextMemorableIndex()
+	adj, verb, noun := om.memorableParts(idx)
+	name := fmt.Sprintf("%s-%s-%s", adj, verb, noun)
+	om.logger.Printf("Warning: memorable name length out of bounds after %d attempts, using %s", memorableNameAttempts, name)
+	return name
 }
 
 func (om *OutputManager) nextMemorableIndex() int {
@@ -322,20 +322,6 @@ func (om *OutputManager) memorableParts(index int) (string, string, string) {
 	return adjectives[adjIndex], verbs[verbIndex], nouns[nounIndex]
 }
 
-func firstMemorableNameWithinLimits() (string, bool) {
-	for _, adj := range adjectives {
-		for _, verb := range verbs {
-			for _, noun := range nouns {
-				name := fmt.Sprintf("%s-%s-%s", adj, verb, noun)
-				if len(name) >= memorableNameMinLength && len(name) <= memorableNameMaxLength {
-					return name, true
-				}
-			}
-		}
-	}
-	return "", false
-}
-
 func makeWordSet(words []string) map[string]struct{} {
 	set := make(map[string]struct{}, len(words))
 	for _, word := range words {
@@ -349,12 +335,13 @@ func pickCoprimeStride(rng *rand.Rand, total int) int {
 		return 1
 	}
 
-	for {
+	for i := 0; i < 1000; i++ {
 		stride := rng.Intn(total-1) + 1
 		if gcd(stride, total) == 1 {
 			return stride
 		}
 	}
+	return 1
 }
 
 func gcd(a, b int) int {
@@ -380,80 +367,66 @@ func (om *OutputManager) CreateOutputDirectory(basePath string, permissions os.F
 	}
 
 	// Generate unique directory name
-	dirName, err := om.generateAvailableMemorableDirName(basePath, maxCollisionAttempts)
+	dirName, err := om.generateAvailableMemorableDirName(basePath, maxCollisionAttempts, permissions)
 	if err != nil {
 		om.logger.Printf("Memorable name collisions exhausted, falling back to timestamp: %v", err)
-		dirName, err = om.generateAvailableTimestampDirName(basePath, maxCollisionAttempts)
+		dirName, err = om.generateAvailableTimestampDirName(basePath, maxCollisionAttempts, permissions)
 		if err != nil {
 			return "", err
 		}
 	}
 	fullPath := filepath.Join(basePath, dirName)
 
-	// Create the directory with proper permissions (0755)
-	if err := os.MkdirAll(fullPath, permissions); err != nil {
-		om.logger.Printf("Error creating output directory %s: %v", fullPath, err)
-		return "", fmt.Errorf("failed to create output directory %s: %w", fullPath, err)
-	}
-
 	om.logger.Printf("Created output directory: %s", fullPath)
 	return fullPath, nil
 }
 
-func (om *OutputManager) generateAvailableMemorableDirName(basePath string, maxAttempts int) (string, error) {
+func (om *OutputManager) generateAvailableMemorableDirName(basePath string, maxAttempts int, permissions os.FileMode) (string, error) {
 	for attempt := 0; attempt < maxAttempts; attempt++ {
 		dirName := om.GenerateMemorableDirName()
 		fullPath := filepath.Join(basePath, dirName)
-		exists, err := dirExists(fullPath)
-		if err != nil {
-			return "", fmt.Errorf("failed to check directory %s: %w", fullPath, err)
-		}
-		if !exists {
+		err := os.Mkdir(fullPath, permissions)
+		if err == nil {
 			return dirName, nil
 		}
-		om.logger.Printf("Directory collision detected, trying: %s", dirName)
+		if os.IsExist(err) {
+			om.logger.Printf("Directory collision detected, trying: %s", dirName)
+			continue
+		}
+		return "", fmt.Errorf("failed to create directory %s: %w", fullPath, err)
 	}
 
 	return "", fmt.Errorf("failed to find unique memorable directory name after %d attempts", maxAttempts)
 }
 
-func (om *OutputManager) generateAvailableTimestampDirName(basePath string, maxAttempts int) (string, error) {
+func (om *OutputManager) generateAvailableTimestampDirName(basePath string, maxAttempts int, permissions os.FileMode) (string, error) {
 	dirName := om.GenerateTimestampedDirName()
 	fullPath := filepath.Join(basePath, dirName)
-	exists, err := dirExists(fullPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to check directory %s: %w", fullPath, err)
-	}
-	if !exists {
+	err := os.Mkdir(fullPath, permissions)
+	if err == nil {
 		return dirName, nil
 	}
+	if !os.IsExist(err) {
+		return "", fmt.Errorf("failed to create directory %s: %w", fullPath, err)
+	}
+	om.logger.Printf("Directory collision detected, trying: %s", dirName)
 
 	originalName := dirName
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		retryName := fmt.Sprintf("%s_retry%d", originalName, attempt)
 		fullPath = filepath.Join(basePath, retryName)
-		exists, err = dirExists(fullPath)
-		if err != nil {
-			return "", fmt.Errorf("failed to check directory %s: %w", fullPath, err)
-		}
-		if !exists {
+		err := os.Mkdir(fullPath, permissions)
+		if err == nil {
 			return retryName, nil
 		}
-		om.logger.Printf("Directory collision detected, trying: %s", retryName)
+		if os.IsExist(err) {
+			om.logger.Printf("Directory collision detected, trying: %s", retryName)
+			continue
+		}
+		return "", fmt.Errorf("failed to create directory %s: %w", fullPath, err)
 	}
 
 	return "", fmt.Errorf("failed to find unique timestamp directory name after %d attempts", maxAttempts)
-}
-
-func dirExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
 }
 
 // CleanupOldDirectories removes output directories older than the specified duration
