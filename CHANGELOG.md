@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.1.0](https://github.com/misty-step/thinktank/compare/v3.0.0...v3.1.0) (2026-01-29)
+
+
+### Features
+
+* **cli:** add memorable output directory names ([#182](https://github.com/misty-step/thinktank/issues/182)) ([50a343b](https://github.com/misty-step/thinktank/commit/50a343b5d593c5328bba87552d2011e7a7feb253))
+
+
+### Bug Fixes
+
+* **build:** use correct Go version 1.24.2 in go.mod ([9f11c44](https://github.com/misty-step/thinktank/commit/9f11c4412b27e78c42248e5407af425586f6ba6a))
+
 ## [3.0.0](https://github.com/misty-step/thinktank/compare/v2.5.0...v3.0.0) (2026-01-28)
 
 
