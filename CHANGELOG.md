@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.0.0](https://github.com/misty-step/thinktank/compare/v2.5.0...v3.0.0) (2026-01-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* github.com/phrazzld/thinktank → github.com/misty-step/thinktank
+
+### Features
+
+* **tui:** upgrade terminal UI with Charmbracelet ecosystem ([#177](https://github.com/misty-step/thinktank/issues/177)) ([8a20abe](https://github.com/misty-step/thinktank/commit/8a20abe290efc46794ce9fd3cc005dc063eacda8))
+
+
+### Miscellaneous Chores
+
+* migrate repository from phrazzld to misty-step ([8f02d3d](https://github.com/misty-step/thinktank/commit/8f02d3d309a04948bffa153a4d0f48d5e41ad267))
+
 ## [2.5.0](https://github.com/phrazzld/thinktank/compare/v2.4.2...v2.5.0) (2026-01-27)
 
 
