@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/misty-step/thinktank/internal/logutil"
 	"github.com/stretchr/testify/assert"
@@ -95,6 +96,18 @@ func TestCreateClientThroughProvider(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewClientConnectionPooling(t *testing.T) {
+	logger := logutil.NewLogger(logutil.InfoLevel, nil, "[test] ")
+	client, err := NewClient("sk-or-test-api-key", "anthropic/claude-3-opus-20240229", "", logger)
+	require.NoError(t, err)
+
+	transport, ok := client.httpClient.Transport.(*http.Transport)
+	require.True(t, ok)
+	assert.Equal(t, 100, transport.MaxIdleConns)
+	assert.Equal(t, 10, transport.MaxIdleConnsPerHost)
+	assert.Equal(t, 90*time.Second, transport.IdleConnTimeout)
 }
 
 // TestClientMethodsThroughProvider tests the client's methods

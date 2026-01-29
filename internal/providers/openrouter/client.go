@@ -65,9 +65,15 @@ func NewClient(apiKey string, modelID string, apiEndpoint string, logger logutil
 		apiEndpoint = "https://openrouter.ai/api/v1"
 	}
 
-	// Create HTTP client with reasonable timeout
+	// Create HTTP client with connection pooling and reasonable timeout
+	transport := &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     90 * time.Second,
+	}
 	httpClient := &http.Client{
-		Timeout: 120 * time.Second, // 2 minute timeout for potentially long LLM generations
+		Transport: transport,
+		Timeout:   120 * time.Second, // 2 minute timeout for potentially long LLM generations
 	}
 
 	// Create client
