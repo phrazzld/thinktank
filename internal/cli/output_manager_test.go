@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,14 +21,12 @@ func TestNewOutputManager(t *testing.T) {
 		om := NewOutputManager(logger)
 		assert.NotNil(t, om)
 		assert.Equal(t, logger, om.logger)
-		assert.NotNil(t, om.rand)
 	})
 
 	t.Run("with nil logger", func(t *testing.T) {
 		om := NewOutputManager(nil)
 		assert.NotNil(t, om)
 		assert.NotNil(t, om.logger)
-		assert.NotNil(t, om.rand)
 	})
 }
 
@@ -115,10 +114,68 @@ func TestGenerateTimestampedDirName(t *testing.T) {
 	})
 }
 
-func TestCreateOutputDirectory(t *testing.T) {
+func TestGenerateTimestampedDirName_Concurrent(t *testing.T) {
 	om := NewOutputManager(testutil.NewMockLogger())
 
+	var wg sync.WaitGroup
+	names := make(chan string, 100)
+
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 10; j++ {
+				names <- om.GenerateTimestampedDirName()
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(names)
+
+	seen := make(map[string]bool)
+	for name := range names {
+		assert.False(t, seen[name], "duplicate name generated concurrently")
+		seen[name] = true
+	}
+}
+
+func TestGenerateMemorableDirName(t *testing.T) {
+	om := NewOutputManager(testutil.NewMockLogger())
+
+	t.Run("format validation", func(t *testing.T) {
+		name := om.GenerateMemorableDirName()
+
+		pattern := `^[a-z]+-[a-z]+-[a-z]+$`
+		re := regexp.MustCompile(pattern)
+		assert.Regexp(t, re, name, "Generated name should match expected format")
+		assert.GreaterOrEqual(t, len(name), memorableNameMinLength)
+		assert.LessOrEqual(t, len(name), memorableNameMaxLength)
+		assert.True(t, om.isMemorableOutputDir(name))
+	})
+
+	t.Run("uniqueness validation", func(t *testing.T) {
+		om.memorableCounter.Store(0)
+		om.memorableOffset = 0
+		om.memorableStride = 1
+		om.memorableTotal = len(adjectives) * len(verbs) * len(nouns)
+
+		runs := 100
+		generatedNames := make(map[string]bool, runs)
+
+		for i := 0; i < runs; i++ {
+			name := om.GenerateMemorableDirName()
+			assert.False(t, generatedNames[name], "Name %q should be unique (iteration %d)", name, i)
+			generatedNames[name] = true
+		}
+
+		assert.Len(t, generatedNames, runs, "Should generate unique names")
+	})
+}
+
+func TestCreateOutputDirectory(t *testing.T) {
 	t.Run("create in temp directory", func(t *testing.T) {
+		om := NewOutputManager(testutil.NewMockLogger())
 		tempDir := t.TempDir()
 
 		dirPath, err := om.CreateOutputDirectory(tempDir, 0755)
@@ -138,10 +195,11 @@ func TestCreateOutputDirectory(t *testing.T) {
 
 		// Verify name format
 		dirName := filepath.Base(dirPath)
-		assert.True(t, strings.HasPrefix(dirName, "thinktank_"))
+		assert.True(t, om.isMemorableOutputDir(dirName))
 	})
 
 	t.Run("create with empty base path uses cwd", func(t *testing.T) {
+		om := NewOutputManager(testutil.NewMockLogger())
 		// This test runs in a temporary directory context
 		originalCwd, err := os.Getwd()
 		require.NoError(t, err)
@@ -149,7 +207,11 @@ func TestCreateOutputDirectory(t *testing.T) {
 		tempDir := t.TempDir()
 		err = os.Chdir(tempDir)
 		require.NoError(t, err)
-		defer func() { _ = os.Chdir(originalCwd) }()
+		t.Cleanup(func() {
+			if err := os.Chdir(originalCwd); err != nil {
+				t.Logf("Warning: failed to restore working directory: %v", err)
+			}
+		})
 
 		dirPath, err := om.CreateOutputDirectory("", 0755)
 		require.NoError(t, err)
@@ -172,26 +234,53 @@ func TestCreateOutputDirectory(t *testing.T) {
 	})
 
 	t.Run("collision handling", func(t *testing.T) {
+		om := NewOutputManager(testutil.NewMockLogger())
 		tempDir := t.TempDir()
 
-		// Create first directory
-		dirPath1, err := om.CreateOutputDirectory(tempDir, 0755)
+		om.memorableCounter.Store(0)
+		om.memorableOffset = 0
+		om.memorableStride = 1
+		om.memorableTotal = len(adjectives) * len(verbs) * len(nouns)
+
+		first := om.GenerateMemorableDirName()
+		second := om.GenerateMemorableDirName()
+		om.memorableCounter.Store(0)
+
+		err := os.MkdirAll(filepath.Join(tempDir, first), 0755)
 		require.NoError(t, err)
 
-		// Force collision by creating directory with same name pattern
-		// Note: this is hard to test reliably since names are unique by design
-		// But we can test the retry mechanism by pre-creating a directory
-		baseName := filepath.Base(dirPath1)
-		retryName := baseName + "_retry1"
-		retryPath := filepath.Join(tempDir, retryName)
-		err = os.MkdirAll(retryPath, 0755)
+		dirPath, err := om.CreateOutputDirectory(tempDir, 0755)
 		require.NoError(t, err)
+		assert.Equal(t, second, filepath.Base(dirPath))
+	})
 
-		// The retry mechanism should work if we somehow get a collision
-		// Since our implementation is designed to avoid collisions, this tests the safety net
+	t.Run("fallback to timestamp after max collisions", func(t *testing.T) {
+		om := NewOutputManager(testutil.NewMockLogger())
+		tempDir := t.TempDir()
+
+		om.memorableCounter.Store(0)
+		om.memorableOffset = 0
+		om.memorableStride = 1
+		om.memorableTotal = len(adjectives) * len(verbs) * len(nouns)
+
+		collisions := make([]string, maxCollisionAttempts)
+		for i := 0; i < maxCollisionAttempts; i++ {
+			collisions[i] = om.GenerateMemorableDirName()
+		}
+		om.memorableCounter.Store(0)
+
+		for _, name := range collisions {
+			err := os.MkdirAll(filepath.Join(tempDir, name), 0755)
+			require.NoError(t, err)
+		}
+
+		dirPath, err := om.CreateOutputDirectory(tempDir, 0755)
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(filepath.Base(dirPath), "thinktank_"))
 	})
 
 	t.Run("invalid permissions", func(t *testing.T) {
+		om := NewOutputManager(testutil.NewMockLogger())
 		tempDir := t.TempDir()
 
 		// Create directory with restrictive permissions
@@ -215,7 +304,9 @@ func TestIsThinktankOutputDir(t *testing.T) {
 	}{
 		{"valid format", "thinktank_20250624_143000_123456789", true},
 		{"valid with retry", "thinktank_20250624_143000_123456789_retry1", true},
+		{"valid memorable", "yellow-trailing-bison", true},
 		{"missing prefix", "nothinktank_20250624_143000_123456789", false},
+		{"invalid memorable capitalization", "Yellow-trailing-bison", false},
 		{"too few parts", "thinktank_20250624", false},
 		{"wrong date format", "thinktank_2025624_143000_123456789", false},
 		{"wrong time format", "thinktank_20250624_14300_123456789", false},
@@ -229,6 +320,28 @@ func TestIsThinktankOutputDir(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := om.isThinktankOutputDir(tt.dirName)
 			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestIsTimestampedOutputDir_RetrySuffix(t *testing.T) {
+	om := NewOutputManager(testutil.NewMockLogger())
+
+	tests := []struct {
+		name     string
+		expected bool
+	}{
+		{"thinktank_20250624_143000_123456789", true},
+		{"thinktank_20250624_143000_123456789_retry1", true},
+		{"thinktank_20250624_143000_123456789_retry99", true},
+		{"thinktank_20250624_143000_123456789_retryX", false},
+		{"thinktank_20250624_143000_12345678_retry1", false},
+		{"random_dir_retry1", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, om.isTimestampedOutputDir(tt.name))
 		})
 	}
 }
