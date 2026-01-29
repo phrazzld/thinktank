@@ -448,7 +448,6 @@ See [CI Migration Guide](docs/carmack-ci-migration.md) for details.
 - [Coverage Analysis](docs/coverage/) - Test coverage analysis and tools
 
 ### Operations & Quality
-- [Quality Dashboard](docs/quality-dashboard/) - Quality metrics and monitoring
 - [Security Documentation](docs/security/) - Security roadmap and scanning
 - [Operations Docs](docs/operations/) - Performance, quality gates, and operations
 

@@ -10,7 +10,6 @@ This directory contains project documentation organized by topic.
 - **`operations/`** - Performance, quality gates, and operational docs
 - **`security/`** - Security roadmap and vulnerability scanning
 - **`testing/`** - Testing strategies and methodologies
-- **`quality-dashboard/`** - Quality dashboard configuration and data
 
 ## Core Documentation
 
