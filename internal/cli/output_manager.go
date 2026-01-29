@@ -16,12 +16,11 @@ import (
 // OutputManager handles intelligent output directory naming and management
 type OutputManager struct {
 	logger logutil.LoggerInterface
-	rand   *rand.Rand
 
 	memorableOffset  int
 	memorableStride  int
 	memorableTotal   int
-	memorableCounter uint32
+	memorableCounter atomic.Uint32
 }
 
 // NewOutputManager creates a new output manager instance
@@ -41,7 +40,6 @@ func NewOutputManager(logger logutil.LoggerInterface) *OutputManager {
 
 	return &OutputManager{
 		logger:          logger,
-		rand:            rng,
 		memorableOffset: offset,
 		memorableStride: stride,
 		memorableTotal:  total,
@@ -241,6 +239,12 @@ var nouns = []string{
 	"zephyr",
 }
 
+func init() {
+	if len(adjectives) == 0 || len(verbs) == 0 || len(nouns) == 0 {
+		panic("word lists cannot be empty")
+	}
+}
+
 // Keep word lists additive to preserve cleanup recognition for older runs.
 var adjectiveSet = makeWordSet(adjectives)
 var verbSet = makeWordSet(verbs)
@@ -265,7 +269,8 @@ func (om *OutputManager) GenerateTimestampedDirName() string {
 	nanos := now.Nanosecond() % 1000
 
 	// Generate a random number
-	randNum := om.rand.Intn(1000)
+	rng := rand.New(rand.NewSource(now.UnixNano()))
+	randNum := rng.Intn(1000)
 
 	// Increment the counter atomically (thread-safe)
 	counter := atomic.AddUint32(&incrementalCounter, 1) % 1000
@@ -302,7 +307,7 @@ func (om *OutputManager) GenerateMemorableDirName() string {
 }
 
 func (om *OutputManager) nextMemorableIndex() int {
-	seq := int64(atomic.AddUint32(&om.memorableCounter, 1) - 1)
+	seq := int64(om.memorableCounter.Add(1) - 1)
 	idx := int64(om.memorableOffset) + (seq * int64(om.memorableStride))
 	if om.memorableTotal == 0 {
 		return 0
@@ -516,14 +521,28 @@ func (om *OutputManager) isThinktankOutputDir(name string) bool {
 }
 
 func (om *OutputManager) isTimestampedOutputDir(name string) bool {
+	baseName := name
+	if idx := strings.Index(name, "_retry"); idx != -1 {
+		retryPart := name[idx+len("_retry"):]
+		if retryPart == "" {
+			return false
+		}
+		for _, r := range retryPart {
+			if r < '0' || r > '9' {
+				return false
+			}
+		}
+		baseName = name[:idx]
+	}
+
 	// Check if it starts with "thinktank_" and has the expected format
-	if !strings.HasPrefix(name, "thinktank_") {
+	if !strings.HasPrefix(baseName, "thinktank_") {
 		return false
 	}
 
 	// Split by underscores and check structure
-	parts := strings.Split(name, "_")
-	if len(parts) < 4 {
+	parts := strings.Split(baseName, "_")
+	if len(parts) != 4 {
 		return false
 	}
 
@@ -539,19 +558,9 @@ func (om *OutputManager) isTimestampedOutputDir(name string) bool {
 		return false
 	}
 
-	// Verify the unique part (NNNNNNNNN or NNNNNNNNN_retryN)
+	// Verify the unique part (NNNNNNNNN)
 	uniquePart := parts[3]
-	if strings.Contains(uniquePart, "_retry") {
-		// Handle retry suffix
-		retryParts := strings.Split(uniquePart, "_retry")
-		if len(retryParts) != 2 || len(retryParts[0]) != 9 {
-			return false
-		}
-	} else if len(uniquePart) != 9 {
-		return false
-	}
-
-	return true
+	return len(uniquePart) == 9
 }
 
 func (om *OutputManager) isMemorableOutputDir(name string) bool {

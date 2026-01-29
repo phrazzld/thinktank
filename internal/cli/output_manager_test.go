@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync/atomic"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,14 +21,12 @@ func TestNewOutputManager(t *testing.T) {
 		om := NewOutputManager(logger)
 		assert.NotNil(t, om)
 		assert.Equal(t, logger, om.logger)
-		assert.NotNil(t, om.rand)
 	})
 
 	t.Run("with nil logger", func(t *testing.T) {
 		om := NewOutputManager(nil)
 		assert.NotNil(t, om)
 		assert.NotNil(t, om.logger)
-		assert.NotNil(t, om.rand)
 	})
 }
 
@@ -116,6 +114,32 @@ func TestGenerateTimestampedDirName(t *testing.T) {
 	})
 }
 
+func TestGenerateTimestampedDirName_Concurrent(t *testing.T) {
+	om := NewOutputManager(testutil.NewMockLogger())
+
+	var wg sync.WaitGroup
+	names := make(chan string, 100)
+
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 10; j++ {
+				names <- om.GenerateTimestampedDirName()
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(names)
+
+	seen := make(map[string]bool)
+	for name := range names {
+		assert.False(t, seen[name], "duplicate name generated concurrently")
+		seen[name] = true
+	}
+}
+
 func TestGenerateMemorableDirName(t *testing.T) {
 	om := NewOutputManager(testutil.NewMockLogger())
 
@@ -131,7 +155,7 @@ func TestGenerateMemorableDirName(t *testing.T) {
 	})
 
 	t.Run("uniqueness validation", func(t *testing.T) {
-		atomic.StoreUint32(&om.memorableCounter, 0)
+		om.memorableCounter.Store(0)
 		om.memorableOffset = 0
 		om.memorableStride = 1
 		om.memorableTotal = len(adjectives) * len(verbs) * len(nouns)
@@ -209,14 +233,14 @@ func TestCreateOutputDirectory(t *testing.T) {
 		om := NewOutputManager(testutil.NewMockLogger())
 		tempDir := t.TempDir()
 
-		atomic.StoreUint32(&om.memorableCounter, 0)
+		om.memorableCounter.Store(0)
 		om.memorableOffset = 0
 		om.memorableStride = 1
 		om.memorableTotal = len(adjectives) * len(verbs) * len(nouns)
 
 		first := om.GenerateMemorableDirName()
 		second := om.GenerateMemorableDirName()
-		atomic.StoreUint32(&om.memorableCounter, 0)
+		om.memorableCounter.Store(0)
 
 		err := os.MkdirAll(filepath.Join(tempDir, first), 0755)
 		require.NoError(t, err)
@@ -230,7 +254,7 @@ func TestCreateOutputDirectory(t *testing.T) {
 		om := NewOutputManager(testutil.NewMockLogger())
 		tempDir := t.TempDir()
 
-		atomic.StoreUint32(&om.memorableCounter, 0)
+		om.memorableCounter.Store(0)
 		om.memorableOffset = 0
 		om.memorableStride = 1
 		om.memorableTotal = len(adjectives) * len(verbs) * len(nouns)
@@ -239,7 +263,7 @@ func TestCreateOutputDirectory(t *testing.T) {
 		for i := 0; i < maxCollisionAttempts; i++ {
 			collisions[i] = om.GenerateMemorableDirName()
 		}
-		atomic.StoreUint32(&om.memorableCounter, 0)
+		om.memorableCounter.Store(0)
 
 		for _, name := range collisions {
 			err := os.MkdirAll(filepath.Join(tempDir, name), 0755)
@@ -292,6 +316,28 @@ func TestIsThinktankOutputDir(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := om.isThinktankOutputDir(tt.dirName)
 			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestIsTimestampedOutputDir_RetrySuffix(t *testing.T) {
+	om := NewOutputManager(testutil.NewMockLogger())
+
+	tests := []struct {
+		name     string
+		expected bool
+	}{
+		{"thinktank_20250624_143000_123456789", true},
+		{"thinktank_20250624_143000_123456789_retry1", true},
+		{"thinktank_20250624_143000_123456789_retry99", true},
+		{"thinktank_20250624_143000_123456789_retryX", false},
+		{"thinktank_20250624_143000_12345678_retry1", false},
+		{"random_dir_retry1", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, om.isTimestampedOutputDir(tt.name))
 		})
 	}
 }
