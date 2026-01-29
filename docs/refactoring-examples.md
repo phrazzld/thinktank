@@ -503,4 +503,3 @@ From the 2025-07-08 refactoring:
 
 - [CLAUDE.md](../CLAUDE.md) - Full development guidelines and patterns
 - [DEVELOPMENT.md](DEVELOPMENT.md) - Development workflow and setup
-- [docs/leyline/bindings/core/pure-functions.md](leyline/bindings/core/pure-functions.md) - Pure function principles

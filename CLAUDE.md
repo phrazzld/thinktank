@@ -78,5 +78,4 @@ Timeouts: lint 4min, coverage 8min. Skip with `--no-verify` (sparingly).
 - [README.md](README.md) - Usage, CLI flags, model list
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) - License policy, detailed setup
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) - Common issues
-- [docs/leyline/](docs/leyline/) - Development philosophy (tenets + bindings)
 - [AGENTS.md](AGENTS.md) - Coding style, testing guidelines
