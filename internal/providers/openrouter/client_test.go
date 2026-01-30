@@ -102,6 +102,11 @@ func TestNewClientConnectionPooling(t *testing.T) {
 	logger := logutil.NewLogger(logutil.InfoLevel, nil, "[test] ")
 	client, err := NewClient("sk-or-test-api-key", "anthropic/claude-3-opus-20240229", "", logger)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := client.Close(); err != nil {
+			t.Errorf("failed to close client: %v", err)
+		}
+	})
 
 	transport, ok := client.httpClient.Transport.(*http.Transport)
 	require.True(t, ok)

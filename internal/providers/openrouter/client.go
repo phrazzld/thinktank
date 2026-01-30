@@ -65,12 +65,12 @@ func NewClient(apiKey string, modelID string, apiEndpoint string, logger logutil
 		apiEndpoint = "https://openrouter.ai/api/v1"
 	}
 
-	// Create HTTP client with connection pooling and reasonable timeout
-	transport := &http.Transport{
-		MaxIdleConns:        100,
-		MaxIdleConnsPerHost: 10,
-		IdleConnTimeout:     90 * time.Second,
-	}
+	// Clone DefaultTransport to preserve proxy support (HTTP_PROXY/HTTPS_PROXY/NO_PROXY),
+	// dial timeouts, TLS handshake timeouts, and other sensible defaults
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.MaxIdleConns = 100
+	transport.MaxIdleConnsPerHost = 10
+	transport.IdleConnTimeout = 90 * time.Second
 	httpClient := &http.Client{
 		Transport: transport,
 		Timeout:   120 * time.Second, // 2 minute timeout for potentially long LLM generations
@@ -467,7 +467,10 @@ func (c *openrouterClient) GetModelName() string {
 
 // Close releases resources used by the client
 func (c *openrouterClient) Close() error {
-	// For a standard HTTP client, no explicit cleanup is required
+	// Close idle connections from the connection pool
+	if transport, ok := c.httpClient.Transport.(*http.Transport); ok {
+		transport.CloseIdleConnections()
+	}
 	return nil
 }
 
