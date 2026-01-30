@@ -42,17 +42,17 @@ func TestCorrelationIDPropagation(t *testing.T) {
 		CountTokensResult: interfaces.TokenCountingResult{TotalTokens: 100},
 	}
 
-	orchestrator := NewOrchestrator(
-		mockAPIService,
-		mockContextGatherer,
-		mockFileWriter,
-		mockAuditLogger,
-		rateLimiter,
-		cfg,
-		logger,
-		consoleWriter,
-		mockTokenService,
-	)
+	orchestrator := NewOrchestrator(OrchestratorDeps{
+		APIService:           mockAPIService,
+		ContextGatherer:      mockContextGatherer,
+		FileWriter:           mockFileWriter,
+		AuditLogger:          mockAuditLogger,
+		RateLimiter:          rateLimiter,
+		Config:               cfg,
+		Logger:               logger,
+		ConsoleWriter:        consoleWriter,
+		TokenCountingService: mockTokenService,
+	})
 
 	// Run the orchestrator with an empty context
 	// The function should generate and add a correlation ID

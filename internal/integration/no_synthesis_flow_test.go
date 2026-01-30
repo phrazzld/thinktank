@@ -143,17 +143,17 @@ func TestNoSynthesisFlow(t *testing.T) {
 	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return false }, // CI mode for tests
 	})
-	orch := orchestrator.NewOrchestrator(
-		apiService,
-		contextGatherer,
-		fileWriter,
-		auditLogger,
-		rateLimiter,
-		cfg,
-		logger,
-		consoleWriter,
-		tokenCountingService,
-	)
+	orch := orchestrator.NewOrchestrator(orchestrator.OrchestratorDeps{
+		APIService:           apiService,
+		ContextGatherer:      contextGatherer,
+		FileWriter:           fileWriter,
+		AuditLogger:          auditLogger,
+		RateLimiter:          rateLimiter,
+		Config:               cfg,
+		Logger:               logger,
+		ConsoleWriter:        consoleWriter,
+		TokenCountingService: tokenCountingService,
+	})
 
 	// Execute the orchestrator
 	err = orch.Run(context.Background(), instructions)

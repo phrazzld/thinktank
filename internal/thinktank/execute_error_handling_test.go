@@ -11,12 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/misty-step/thinktank/internal/auditlog"
 	"github.com/misty-step/thinktank/internal/config"
 	"github.com/misty-step/thinktank/internal/llm"
 	"github.com/misty-step/thinktank/internal/logutil"
-	"github.com/misty-step/thinktank/internal/ratelimit"
-	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -178,7 +175,7 @@ func TestExecuteAuditLogErrors(t *testing.T) {
 			defer func() { orchestratorConstructor = originalNewOrchestrator }()
 
 			// Override orchestrator constructor
-			orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter, tokenCountingService interfaces.TokenCountingService) Orchestrator {
+			orchestratorConstructor = func(_ OrchestratorDeps) Orchestrator {
 				return mockOrchestrator
 			}
 
@@ -242,7 +239,7 @@ func TestExecuteContextCancellation(t *testing.T) {
 	defer func() { orchestratorConstructor = originalNewOrchestrator }()
 
 	// Override orchestrator constructor with context-aware mock
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter, tokenCountingService interfaces.TokenCountingService) Orchestrator {
+	orchestratorConstructor = func(_ OrchestratorDeps) Orchestrator {
 		return &ContextAwareMockOrchestrator{}
 	}
 
@@ -310,7 +307,7 @@ func TestExecutePartialSuccessError(t *testing.T) {
 	defer func() { orchestratorConstructor = originalNewOrchestrator }()
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter, tokenCountingService interfaces.TokenCountingService) Orchestrator {
+	orchestratorConstructor = func(_ OrchestratorDeps) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -370,7 +367,7 @@ func TestExecuteAlreadyWrappedPartialSuccess(t *testing.T) {
 	defer func() { orchestratorConstructor = originalNewOrchestrator }()
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter, tokenCountingService interfaces.TokenCountingService) Orchestrator {
+	orchestratorConstructor = func(_ OrchestratorDeps) Orchestrator {
 		return mockOrchestrator
 	}
 

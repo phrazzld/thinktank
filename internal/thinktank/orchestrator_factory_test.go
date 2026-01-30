@@ -127,17 +127,17 @@ func TestNewOrchestrator(t *testing.T) {
 		IsTerminalFunc: func() bool { return false }, // CI mode for tests
 	})
 	tokenCountingService := &mockTokenCountingService{}
-	orchestrator := thinktank.NewOrchestrator(
-		apiService,
-		contextGatherer,
-		fileWriter,
-		auditLogger,
-		rateLimiter,
-		config,
-		logger,
-		consoleWriter,
-		tokenCountingService,
-	)
+	orchestrator := thinktank.NewOrchestrator(thinktank.OrchestratorDeps{
+		APIService:           apiService,
+		ContextGatherer:      contextGatherer,
+		FileWriter:           fileWriter,
+		AuditLogger:          auditLogger,
+		RateLimiter:          rateLimiter,
+		Config:               config,
+		Logger:               logger,
+		ConsoleWriter:        consoleWriter,
+		TokenCountingService: tokenCountingService,
+	})
 
 	// Verify orchestrator was created successfully
 	if orchestrator == nil {
@@ -147,74 +147,5 @@ func TestNewOrchestrator(t *testing.T) {
 	// NewOrchestrator already returns Orchestrator type, no need to assert
 }
 
-func TestNewOrchestratorWithNilDependencies(t *testing.T) {
-	// Test with various nil dependencies to ensure no panics
-	testCases := []struct {
-		name            string
-		apiService      interfaces.APIService
-		contextGatherer interfaces.ContextGatherer
-		fileWriter      interfaces.FileWriter
-		auditLogger     auditlog.AuditLogger
-		rateLimiter     *ratelimit.RateLimiter
-		config          *config.CliConfig
-		logger          logutil.LoggerInterface
-		expectPanic     bool
-	}{
-		{
-			name:            "all valid dependencies",
-			apiService:      &mockAPIService{},
-			contextGatherer: &mockContextGatherer{},
-			fileWriter:      &mockFileWriter{},
-			auditLogger:     auditlog.NewNoOpAuditLogger(),
-			rateLimiter:     ratelimit.NewRateLimiter(5, 60),
-			config:          &config.CliConfig{},
-			logger:          logutil.NewLogger(logutil.InfoLevel, nil, "[test] "),
-			expectPanic:     false,
-		},
-		{
-			name:            "nil logger",
-			apiService:      &mockAPIService{},
-			contextGatherer: &mockContextGatherer{},
-			fileWriter:      &mockFileWriter{},
-			auditLogger:     auditlog.NewNoOpAuditLogger(),
-			rateLimiter:     ratelimit.NewRateLimiter(5, 60),
-			config:          &config.CliConfig{},
-			logger:          nil,
-			expectPanic:     false, // Should handle nil gracefully
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			defer func() {
-				if r := recover(); r != nil {
-					if !tc.expectPanic {
-						t.Fatalf("NewOrchestrator panicked unexpectedly: %v", r)
-					}
-				} else if tc.expectPanic {
-					t.Fatal("NewOrchestrator was expected to panic but didn't")
-				}
-			}()
-
-			consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
-				IsTerminalFunc: func() bool { return false }, // CI mode for tests
-			})
-			tokenCountingService := &mockTokenCountingService{}
-			orchestrator := thinktank.NewOrchestrator(
-				tc.apiService,
-				tc.contextGatherer,
-				tc.fileWriter,
-				tc.auditLogger,
-				tc.rateLimiter,
-				tc.config,
-				tc.logger,
-				consoleWriter,
-				tokenCountingService,
-			)
-
-			if !tc.expectPanic && orchestrator == nil {
-				t.Fatal("NewOrchestrator returned nil when it shouldn't have")
-			}
-		})
-	}
-}
+// Note: Nil dependency validation tests are in orchestrator/orchestrator_deps_test.go
+// which comprehensively tests that NewOrchestrator panics on nil dependencies.

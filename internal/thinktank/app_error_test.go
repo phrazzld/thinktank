@@ -9,12 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/misty-step/thinktank/internal/auditlog"
 	"github.com/misty-step/thinktank/internal/config"
 	"github.com/misty-step/thinktank/internal/logutil"
-	"github.com/misty-step/thinktank/internal/ratelimit"
 	"github.com/misty-step/thinktank/internal/testutil"
-	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
 )
 
 // TestExecuteInstructionsFileError tests error handling when instructions file can't be read
@@ -51,7 +48,7 @@ func TestExecuteInstructionsFileError(t *testing.T) {
 	originalNewOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter, tokenCountingService interfaces.TokenCountingService) Orchestrator {
+	orchestratorConstructor = func(_ OrchestratorDeps) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -134,7 +131,7 @@ func TestExecuteClientInitializationError(t *testing.T) {
 	originalNewOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter, tokenCountingService interfaces.TokenCountingService) Orchestrator {
+	orchestratorConstructor = func(_ OrchestratorDeps) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -219,7 +216,7 @@ func TestExecuteOrchestratorError(t *testing.T) {
 	originalNewOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter, tokenCountingService interfaces.TokenCountingService) Orchestrator {
+	orchestratorConstructor = func(_ OrchestratorDeps) Orchestrator {
 		return mockOrchestrator
 	}
 

@@ -6,12 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/misty-step/thinktank/internal/auditlog"
 	"github.com/misty-step/thinktank/internal/config"
 	"github.com/misty-step/thinktank/internal/logutil"
-	"github.com/misty-step/thinktank/internal/ratelimit"
 	"github.com/misty-step/thinktank/internal/testutil"
-	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
 )
 
 // TestExecuteHappyPath tests the happy path of the Execute function
@@ -49,7 +46,7 @@ func TestExecuteHappyPath(t *testing.T) {
 	originalOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter, tokenCountingService interfaces.TokenCountingService) Orchestrator {
+	orchestratorConstructor = func(_ OrchestratorDeps) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -140,7 +137,7 @@ func TestExecuteDryRun(t *testing.T) {
 	originalOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter, tokenCountingService interfaces.TokenCountingService) Orchestrator {
+	orchestratorConstructor = func(_ OrchestratorDeps) Orchestrator {
 		return mockOrchestrator
 	}
 

@@ -643,17 +643,17 @@ func setupMultiModelTestEnvWithConfig(t *testing.T, logger logutil.LoggerInterfa
 		IsTerminalFunc: func() bool { return false }, // CI mode for tests
 	})
 
-	orch := orchestrator.NewOrchestrator(
-		apiService,
-		contextGatherer,
-		fileWriter,
-		auditLogger,
-		rateLimiter,
-		cfg,
-		logger,
-		consoleWriter,
-		tokenCountingService,
-	)
+	orch := orchestrator.NewOrchestrator(orchestrator.OrchestratorDeps{
+		APIService:           apiService,
+		ContextGatherer:      contextGatherer,
+		FileWriter:           fileWriter,
+		AuditLogger:          auditLogger,
+		RateLimiter:          rateLimiter,
+		Config:               cfg,
+		Logger:               logger,
+		ConsoleWriter:        consoleWriter,
+		TokenCountingService: tokenCountingService,
+	})
 
 	return &multiModelTestEnv{
 		outputDir:    outputDir,

@@ -283,29 +283,19 @@ func (env *BoundaryTestEnv) Run(ctx context.Context, instructions string) error 
 	originalOrchestratorConstructor := thinktank.GetOrchestratorConstructor()
 	defer thinktank.SetOrchestratorConstructor(originalOrchestratorConstructor)
 
-	thinktank.SetOrchestratorConstructor(func(
-		apiService interfaces.APIService,
-		contextGatherer interfaces.ContextGatherer,
-		fileWriter interfaces.FileWriter,
-		auditLogger auditlog.AuditLogger,
-		rateLimiter *ratelimit.RateLimiter,
-		config *config.CliConfig,
-		logger logutil.LoggerInterface,
-		consoleWriter logutil.ConsoleWriter,
-		tokenCountingService interfaces.TokenCountingService,
-	) thinktank.Orchestrator {
+	thinktank.SetOrchestratorConstructor(func(deps thinktank.OrchestratorDeps) thinktank.Orchestrator {
 		// Use the injected components from our test environment
-		return thinktank.NewOrchestrator(
-			env.APIService,
-			env.ContextGatherer,
-			env.FileWriter,
-			env.AuditLogger,
-			env.RateLimiter,
-			env.Config,
-			env.Logger,
-			consoleWriter,
-			tokenCountingService,
-		)
+		return thinktank.NewOrchestrator(thinktank.OrchestratorDeps{
+			APIService:           env.APIService,
+			ContextGatherer:      env.ContextGatherer,
+			FileWriter:           env.FileWriter,
+			AuditLogger:          env.AuditLogger,
+			RateLimiter:          env.RateLimiter,
+			Config:               env.Config,
+			Logger:               env.Logger,
+			ConsoleWriter:        deps.ConsoleWriter,
+			TokenCountingService: deps.TokenCountingService,
+		})
 	})
 
 	// Execute the thinktank application
