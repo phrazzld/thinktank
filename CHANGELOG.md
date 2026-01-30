@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.1](https://github.com/misty-step/thinktank/compare/v3.1.0...v3.1.1) (2026-01-30)
+
+
+### Performance Improvements
+
+* **openrouter:** add HTTP connection pooling ([#186](https://github.com/misty-step/thinktank/issues/186)) ([d0721b9](https://github.com/misty-step/thinktank/commit/d0721b9327ba3af11a0236997b5c1d8cab9d5b9f))
+
 ## [3.1.0](https://github.com/misty-step/thinktank/compare/v3.0.0...v3.1.0) (2026-01-29)
 
 
