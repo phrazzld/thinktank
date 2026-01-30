@@ -57,7 +57,37 @@ type OrchestratorDeps struct {
 // NewOrchestrator creates a new instance of the Orchestrator.
 // It requires all necessary dependencies to be provided during construction,
 // ensuring that the orchestrator is properly configured to execute its tasks.
+// Panics if any essential dependency is nil, signaling a programming error.
 func NewOrchestrator(deps OrchestratorDeps) *Orchestrator {
+	// Validate essential dependencies - panic on nil to signal programming errors early
+	if deps.APIService == nil {
+		panic("NewOrchestrator: APIService cannot be nil")
+	}
+	if deps.ContextGatherer == nil {
+		panic("NewOrchestrator: ContextGatherer cannot be nil")
+	}
+	if deps.FileWriter == nil {
+		panic("NewOrchestrator: FileWriter cannot be nil")
+	}
+	if deps.AuditLogger == nil {
+		panic("NewOrchestrator: AuditLogger cannot be nil")
+	}
+	if deps.RateLimiter == nil {
+		panic("NewOrchestrator: RateLimiter cannot be nil")
+	}
+	if deps.Config == nil {
+		panic("NewOrchestrator: Config cannot be nil")
+	}
+	if deps.Logger == nil {
+		panic("NewOrchestrator: Logger cannot be nil")
+	}
+	if deps.ConsoleWriter == nil {
+		panic("NewOrchestrator: ConsoleWriter cannot be nil")
+	}
+	if deps.TokenCountingService == nil {
+		panic("NewOrchestrator: TokenCountingService cannot be nil")
+	}
+
 	// Create the output writer
 	outputWriter := NewOutputWriter(deps.FileWriter, deps.AuditLogger, deps.Logger)
 	// Create the summary writer
