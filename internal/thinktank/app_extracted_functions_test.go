@@ -12,12 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/misty-step/thinktank/internal/auditlog"
 	"github.com/misty-step/thinktank/internal/config"
 	"github.com/misty-step/thinktank/internal/llm"
 	"github.com/misty-step/thinktank/internal/logutil"
-	"github.com/misty-step/thinktank/internal/ratelimit"
-	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
 )
 
 // TestGatherProjectFiles tests the gatherProjectFiles function with table-driven tests
@@ -509,17 +506,7 @@ func TestGenerateOutput(t *testing.T) {
 	oldConstructor := orchestratorConstructor
 	defer func() { orchestratorConstructor = oldConstructor }()
 
-	orchestratorConstructor = func(
-		apiService interfaces.APIService,
-		contextGatherer interfaces.ContextGatherer,
-		fileWriter interfaces.FileWriter,
-		auditLogger auditlog.AuditLogger,
-		rateLimiter *ratelimit.RateLimiter,
-		cliConfig *config.CliConfig,
-		logger logutil.LoggerInterface,
-		consoleWriter logutil.ConsoleWriter,
-		tokenCountingService interfaces.TokenCountingService,
-	) Orchestrator {
+	orchestratorConstructor = func(_ OrchestratorDeps) Orchestrator {
 		return &MockOrchestrator{}
 	}
 

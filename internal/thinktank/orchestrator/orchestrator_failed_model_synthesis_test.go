@@ -186,17 +186,17 @@ func TestProcessModelsToSynthesis(t *testing.T) {
 				CountTokensResult: interfaces.TokenCountingResult{TotalTokens: 10},
 			}
 
-			orch := NewOrchestrator(
-				mockAPIService,
-				mockContextGatherer,
-				mockFileWriter,
-				mockAuditLogger,
-				mockRateLimiter,
-				cfg,
-				logger,
-				consoleWriter,
-				mockTokenService,
-			)
+			orch := NewOrchestrator(OrchestratorDeps{
+				APIService:           mockAPIService,
+				ContextGatherer:      mockContextGatherer,
+				FileWriter:           mockFileWriter,
+				AuditLogger:          mockAuditLogger,
+				RateLimiter:          mockRateLimiter,
+				Config:               cfg,
+				Logger:               logger,
+				ConsoleWriter:        consoleWriter,
+				TokenCountingService: mockTokenService,
+			})
 
 			// Create a custom mock synthesis service that tracks calls
 			synthesisMock := &MockSynthesisService{

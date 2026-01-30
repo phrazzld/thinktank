@@ -185,17 +185,17 @@ func generateOutput(
 	tokenCountingServiceImpl := NewTokenCountingService()
 	tokenCountingService := &TokenCountingServiceAdapter{TokenCountingService: tokenCountingServiceImpl}
 
-	orch := orchestratorConstructor(
-		apiServiceAdapter,
-		contextGatherer, // Now directly implements interfaces.ContextGatherer
-		fileWriterAdapter,
-		auditLogger,
-		rateLimiter,
-		cliConfig,
-		logger,
-		consoleWriter,
-		tokenCountingService,
-	)
+	orch := orchestratorConstructor(OrchestratorDeps{
+		APIService:           apiServiceAdapter,
+		ContextGatherer:      contextGatherer, // Now directly implements interfaces.ContextGatherer
+		FileWriter:           fileWriterAdapter,
+		AuditLogger:          auditLogger,
+		RateLimiter:          rateLimiter,
+		Config:               cliConfig,
+		Logger:               logger,
+		ConsoleWriter:        consoleWriter,
+		TokenCountingService: tokenCountingService,
+	})
 
 	return orch, nil
 }
@@ -300,59 +300,19 @@ type Orchestrator interface {
 
 // orchestratorConstructor is the function used to create an Orchestrator.
 // This can be overridden in tests to return a mock orchestrator.
-var orchestratorConstructor = func(
-	apiService interfaces.APIService,
-	contextGatherer interfaces.ContextGatherer,
-	fileWriter interfaces.FileWriter,
-	auditLogger auditlog.AuditLogger,
-	rateLimiter *ratelimit.RateLimiter,
-	config *config.CliConfig,
-	logger logutil.LoggerInterface,
-	consoleWriter logutil.ConsoleWriter,
-	tokenCountingService interfaces.TokenCountingService,
-) Orchestrator {
-	return orchestrator.NewOrchestrator(
-		apiService,
-		contextGatherer,
-		fileWriter,
-		auditLogger,
-		rateLimiter,
-		config,
-		logger,
-		consoleWriter,
-		tokenCountingService,
-	)
+var orchestratorConstructor = func(deps OrchestratorDeps) Orchestrator {
+	return orchestrator.NewOrchestrator(deps)
 }
 
 // GetOrchestratorConstructor returns the current orchestrator constructor function.
 // This is useful for tests that need to temporarily override the constructor.
-func GetOrchestratorConstructor() func(
-	apiService interfaces.APIService,
-	contextGatherer interfaces.ContextGatherer,
-	fileWriter interfaces.FileWriter,
-	auditLogger auditlog.AuditLogger,
-	rateLimiter *ratelimit.RateLimiter,
-	config *config.CliConfig,
-	logger logutil.LoggerInterface,
-	consoleWriter logutil.ConsoleWriter,
-	tokenCountingService interfaces.TokenCountingService,
-) Orchestrator {
+func GetOrchestratorConstructor() func(deps OrchestratorDeps) Orchestrator {
 	return orchestratorConstructor
 }
 
 // SetOrchestratorConstructor sets the orchestrator constructor function.
 // This is useful for tests that need to temporarily override the constructor.
-func SetOrchestratorConstructor(constructor func(
-	apiService interfaces.APIService,
-	contextGatherer interfaces.ContextGatherer,
-	fileWriter interfaces.FileWriter,
-	auditLogger auditlog.AuditLogger,
-	rateLimiter *ratelimit.RateLimiter,
-	config *config.CliConfig,
-	logger logutil.LoggerInterface,
-	consoleWriter logutil.ConsoleWriter,
-	tokenCountingService interfaces.TokenCountingService,
-) Orchestrator) {
+func SetOrchestratorConstructor(constructor func(deps OrchestratorDeps) Orchestrator) {
 	orchestratorConstructor = constructor
 }
 

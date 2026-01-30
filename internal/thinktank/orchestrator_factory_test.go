@@ -127,17 +127,17 @@ func TestNewOrchestrator(t *testing.T) {
 		IsTerminalFunc: func() bool { return false }, // CI mode for tests
 	})
 	tokenCountingService := &mockTokenCountingService{}
-	orchestrator := thinktank.NewOrchestrator(
-		apiService,
-		contextGatherer,
-		fileWriter,
-		auditLogger,
-		rateLimiter,
-		config,
-		logger,
-		consoleWriter,
-		tokenCountingService,
-	)
+	orchestrator := thinktank.NewOrchestrator(thinktank.OrchestratorDeps{
+		APIService:           apiService,
+		ContextGatherer:      contextGatherer,
+		FileWriter:           fileWriter,
+		AuditLogger:          auditLogger,
+		RateLimiter:          rateLimiter,
+		Config:               config,
+		Logger:               logger,
+		ConsoleWriter:        consoleWriter,
+		TokenCountingService: tokenCountingService,
+	})
 
 	// Verify orchestrator was created successfully
 	if orchestrator == nil {
@@ -200,17 +200,17 @@ func TestNewOrchestratorWithNilDependencies(t *testing.T) {
 				IsTerminalFunc: func() bool { return false }, // CI mode for tests
 			})
 			tokenCountingService := &mockTokenCountingService{}
-			orchestrator := thinktank.NewOrchestrator(
-				tc.apiService,
-				tc.contextGatherer,
-				tc.fileWriter,
-				tc.auditLogger,
-				tc.rateLimiter,
-				tc.config,
-				tc.logger,
-				consoleWriter,
-				tokenCountingService,
-			)
+			orchestrator := thinktank.NewOrchestrator(thinktank.OrchestratorDeps{
+				APIService:           tc.apiService,
+				ContextGatherer:      tc.contextGatherer,
+				FileWriter:           tc.fileWriter,
+				AuditLogger:          tc.auditLogger,
+				RateLimiter:          tc.rateLimiter,
+				Config:               tc.config,
+				Logger:               tc.logger,
+				ConsoleWriter:        consoleWriter,
+				TokenCountingService: tokenCountingService,
+			})
 
 			if !tc.expectPanic && orchestrator == nil {
 				t.Fatal("NewOrchestrator returned nil when it shouldn't have")

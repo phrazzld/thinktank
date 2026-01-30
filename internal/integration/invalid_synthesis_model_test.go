@@ -175,17 +175,17 @@ func TestInvalidSynthesisModel(t *testing.T) {
 	})
 	// Create a simple token counting service for testing
 	tokenCountingService := &SimpleTokenCountingService{}
-	orch := orchestrator.NewOrchestrator(
-		apiService,
-		contextGatherer,
-		fileWriter,
-		auditLogger,
-		rateLimiter,
-		cfg,
-		logger,
-		consoleWriter,
-		tokenCountingService,
-	)
+	orch := orchestrator.NewOrchestrator(orchestrator.OrchestratorDeps{
+		APIService:           apiService,
+		ContextGatherer:      contextGatherer,
+		FileWriter:           fileWriter,
+		AuditLogger:          auditLogger,
+		RateLimiter:          rateLimiter,
+		Config:               cfg,
+		Logger:               logger,
+		ConsoleWriter:        consoleWriter,
+		TokenCountingService: tokenCountingService,
+	})
 
 	// Execute the orchestrator - expect it to fail due to invalid synthesis model
 	err = orch.Run(context.Background(), instructions)

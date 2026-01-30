@@ -273,17 +273,17 @@ func runApplication(ctx context.Context, cfg *config.MinimalConfig, logger logut
 	adapterConfig := createAdapterConfig(cfg)
 
 	// Create orchestrator with adapters for type compatibility
-	orch := orchestrator.NewOrchestrator(
-		apiService,
-		contextGatherer, // Now directly implements interfaces.ContextGatherer
-		fileWriter,
-		auditLogger,
-		rateLimiter,
-		adapterConfig,
-		logger,
-		consoleWriter,
-		tokenService,
-	)
+	orch := orchestrator.NewOrchestrator(orchestrator.OrchestratorDeps{
+		APIService:           apiService,
+		ContextGatherer:      contextGatherer, // Now directly implements interfaces.ContextGatherer
+		FileWriter:           fileWriter,
+		AuditLogger:          auditLogger,
+		RateLimiter:          rateLimiter,
+		Config:               adapterConfig,
+		Logger:               logger,
+		ConsoleWriter:        consoleWriter,
+		TokenCountingService: tokenService,
+	})
 
 	// Run orchestrator
 	return orch.Run(ctx, instructions)

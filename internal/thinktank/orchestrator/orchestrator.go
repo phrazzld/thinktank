@@ -41,42 +41,45 @@ type Orchestrator struct {
 	rateLimiterMutex     sync.RWMutex                      // Protects modelRateLimiters map
 }
 
+// OrchestratorDeps defines the runtime dependencies required to build an Orchestrator.
+type OrchestratorDeps struct {
+	APIService           interfaces.APIService
+	ContextGatherer      interfaces.ContextGatherer
+	FileWriter           interfaces.FileWriter
+	AuditLogger          auditlog.AuditLogger
+	RateLimiter          *ratelimit.RateLimiter
+	Config               *config.CliConfig
+	Logger               logutil.LoggerInterface
+	ConsoleWriter        logutil.ConsoleWriter
+	TokenCountingService interfaces.TokenCountingService
+}
+
 // NewOrchestrator creates a new instance of the Orchestrator.
 // It requires all necessary dependencies to be provided during construction,
 // ensuring that the orchestrator is properly configured to execute its tasks.
-func NewOrchestrator(
-	apiService interfaces.APIService,
-	contextGatherer interfaces.ContextGatherer,
-	fileWriter interfaces.FileWriter,
-	auditLogger auditlog.AuditLogger,
-	rateLimiter *ratelimit.RateLimiter,
-	config *config.CliConfig,
-	logger logutil.LoggerInterface,
-	consoleWriter logutil.ConsoleWriter,
-	tokenCountingService interfaces.TokenCountingService,
-) *Orchestrator {
+func NewOrchestrator(deps OrchestratorDeps) *Orchestrator {
 	// Create the output writer
-	outputWriter := NewOutputWriter(fileWriter, auditLogger, logger)
+	outputWriter := NewOutputWriter(deps.FileWriter, deps.AuditLogger, deps.Logger)
 	// Create the summary writer
-	summaryWriter := NewSummaryWriter(logger, consoleWriter)
+	summaryWriter := NewSummaryWriter(deps.Logger, deps.ConsoleWriter)
 	// Create a synthesis service only if synthesis model is specified
 	var synthesisService SynthesisService
-	if config.SynthesisModel != "" {
-		synthesisService = NewSynthesisService(apiService, auditLogger, logger, config.SynthesisModel)
+	if deps.Config.SynthesisModel != "" {
+		synthesisService = NewSynthesisService(deps.APIService, deps.AuditLogger, deps.Logger, deps.Config.SynthesisModel)
 	}
 	return &Orchestrator{
-		apiService:           apiService,
-		contextGatherer:      contextGatherer,
-		fileWriter:           fileWriter,
-		auditLogger:          auditLogger,
-		rateLimiter:          rateLimiter,
-		config:               config,
-		logger:               logger,
-		consoleWriter:        consoleWriter,
+		apiService:           deps.APIService,
+		contextGatherer:      deps.ContextGatherer,
+		fileWriter:           deps.FileWriter,
+		auditLogger:          deps.AuditLogger,
+		rateLimiter:          deps.RateLimiter,
+		config:               deps.Config,
+		logger:               deps.Logger,
+		consoleWriter:        deps.ConsoleWriter,
 		synthesisService:     synthesisService,
 		outputWriter:         outputWriter,
 		summaryWriter:        summaryWriter,
-		tokenCountingService: tokenCountingService,
+		tokenCountingService: deps.TokenCountingService,
 		modelRateLimiters:    make(map[string]*ratelimit.RateLimiter),
 	}
 }

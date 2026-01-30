@@ -230,15 +230,15 @@ func createTestOrchestrator(cfg *config.CliConfig, logger *MockLogger, tokenServ
 	rateLimiter := ratelimit.NewRateLimiter(0, 0)
 	mockConsoleWriter := &MockConsoleWriter{}
 
-	return NewOrchestrator(
-		mockAPIService,
-		mockContextGatherer,
-		mockFileWriter,
-		mockAuditLogger,
-		rateLimiter,
-		cfg,
-		logger,
-		mockConsoleWriter,
-		tokenService,
-	)
+	return NewOrchestrator(OrchestratorDeps{
+		APIService:           mockAPIService,
+		ContextGatherer:      mockContextGatherer,
+		FileWriter:           mockFileWriter,
+		AuditLogger:          mockAuditLogger,
+		RateLimiter:          rateLimiter,
+		Config:               cfg,
+		Logger:               logger,
+		ConsoleWriter:        mockConsoleWriter,
+		TokenCountingService: tokenService,
+	})
 }

@@ -139,17 +139,17 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 	})
 	// Create a mock token counting service for integration testing
 	tokenCountingService := &MockTokenCountingService{}
-	orch := thinktank.NewOrchestrator(
-		apiService,
-		contextGatherer,
-		fileWriter,
-		auditLogger,
-		rateLimiter,
-		cfg,
-		logger,
-		consoleWriter,
-		tokenCountingService,
-	)
+	orch := thinktank.NewOrchestrator(thinktank.OrchestratorDeps{
+		APIService:           apiService,
+		ContextGatherer:      contextGatherer,
+		FileWriter:           fileWriter,
+		AuditLogger:          auditLogger,
+		RateLimiter:          rateLimiter,
+		Config:               cfg,
+		Logger:               logger,
+		ConsoleWriter:        consoleWriter,
+		TokenCountingService: tokenCountingService,
+	})
 
 	// Run the orchestrator
 	err = orch.Run(context.Background(), instructions)
@@ -336,17 +336,17 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	})
 	// Create a mock token counting service for integration testing
 	tokenCountingService := &MockTokenCountingService{}
-	orch := thinktank.NewOrchestrator(
-		apiService,
-		contextGatherer,
-		fileWriter,
-		auditLogger,
-		rateLimiter,
-		cfg,
-		logger,
-		consoleWriter,
-		tokenCountingService,
-	)
+	orch := thinktank.NewOrchestrator(thinktank.OrchestratorDeps{
+		APIService:           apiService,
+		ContextGatherer:      contextGatherer,
+		FileWriter:           fileWriter,
+		AuditLogger:          auditLogger,
+		RateLimiter:          rateLimiter,
+		Config:               cfg,
+		Logger:               logger,
+		ConsoleWriter:        consoleWriter,
+		TokenCountingService: tokenCountingService,
+	})
 
 	// Run the orchestrator (expecting partial failure)
 	err = orch.Run(context.Background(), instructions)
