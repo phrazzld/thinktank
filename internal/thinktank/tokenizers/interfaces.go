@@ -190,11 +190,3 @@ func buildEnhancedErrorDetails(provider, model string, cause error, tokenizerTyp
 	}
 	return details
 }
-
-// getTokenizerType returns the tokenizer type for a given provider.
-func getTokenizerType(provider string) string {
-	if provider == "openrouter" {
-		return "tiktoken-o200k"
-	}
-	return "unknown"
-}
