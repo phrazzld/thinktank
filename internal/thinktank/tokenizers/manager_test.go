@@ -1,8 +1,12 @@
 package tokenizers
 
 import (
+	"context"
+	"fmt"
+	"sync"
 	"testing"
 
+	"github.com/misty-step/thinktank/internal/llm"
 	"github.com/misty-step/thinktank/internal/testutil/perftest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -123,6 +127,28 @@ func TestTokenizerManager_ConcurrentAccess(t *testing.T) {
 	}
 }
 
+func TestTokenizerManager_ClearCacheRace(t *testing.T) {
+	manager := NewTokenizerManager()
+
+	const iterations = 100
+	for i := 0; i < iterations; i++ {
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+			_, _ = manager.GetTokenizer("openrouter")
+		}()
+
+		go func() {
+			defer wg.Done()
+			manager.ClearCache()
+		}()
+
+		wg.Wait()
+	}
+}
+
 // Benchmark for manager overhead
 func BenchmarkTokenizerManager_GetTokenizer(b *testing.B) {
 	manager := NewTokenizerManager()
@@ -139,4 +165,77 @@ func BenchmarkTokenizerManager_GetTokenizer(b *testing.B) {
 			}
 		}
 	})
+}
+
+// Test categorizeTokenizerError with wrapped context errors
+func TestCategorizeTokenizerError_WrappedContextErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		cause    error
+		expected llm.ErrorCategory
+	}{
+		{
+			name:     "wrapped DeadlineExceeded",
+			cause:    fmt.Errorf("operation failed: %w", context.DeadlineExceeded),
+			expected: llm.CategoryCancelled,
+		},
+		{
+			name:     "wrapped Canceled",
+			cause:    fmt.Errorf("user canceled: %w", context.Canceled),
+			expected: llm.CategoryCancelled,
+		},
+		{
+			name:     "double wrapped DeadlineExceeded",
+			cause:    fmt.Errorf("outer: %w", fmt.Errorf("inner: %w", context.DeadlineExceeded)),
+			expected: llm.CategoryCancelled,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cat := categorizeTokenizerError("test", "model", "message", tt.cause)
+			assert.Equal(t, tt.expected, cat, "Should detect wrapped context errors")
+		})
+	}
+}
+
+// Test categorizeTokenizerError with message-only (nil cause)
+func TestCategorizeTokenizerError_MessageOnly(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		message  string
+		expected llm.ErrorCategory
+	}{
+		{
+			name:     "network error in message",
+			message:  "network connection failed",
+			expected: llm.CategoryNetwork,
+		},
+		{
+			name:     "auth error in message",
+			message:  "authentication failed",
+			expected: llm.CategoryAuth,
+		},
+		{
+			name:     "empty message nil cause",
+			message:  "",
+			expected: llm.CategoryUnknown,
+		},
+		{
+			name:     "unsupported in message",
+			message:  "model not found",
+			expected: llm.CategoryNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cat := categorizeTokenizerError("test", "model", tt.message, nil)
+			assert.Equal(t, tt.expected, cat, "Should categorize based on message when cause is nil")
+		})
+	}
 }

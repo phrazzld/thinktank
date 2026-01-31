@@ -4,6 +4,7 @@ package tokenizers
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/misty-step/thinktank/internal/llm"
@@ -114,17 +115,22 @@ func NewTokenizerErrorWithDetails(provider, model, message string, cause error, 
 }
 
 // categorizeTokenizerError determines the error category based on error context.
+// Checks both cause (using errors.Is for wrapped errors) and message content.
 func categorizeTokenizerError(provider, model, message string, cause error) llm.ErrorCategory {
-	if cause == nil {
-		return llm.CategoryUnknown
+	// Check for context cancellation/timeout using errors.Is (handles wrapped errors)
+	if cause != nil {
+		if errors.Is(cause, context.DeadlineExceeded) || errors.Is(cause, context.Canceled) {
+			return llm.CategoryCancelled
+		}
 	}
 
-	causeStr := cause.Error()
-	if causeStr == "context deadline exceeded" || causeStr == "context canceled" {
-		return llm.CategoryCancelled
+	// Build searchable text from message and cause
+	var messageAndCause string
+	if cause != nil {
+		messageAndCause = strings.ToLower(message + " " + cause.Error())
+	} else {
+		messageAndCause = strings.ToLower(message)
 	}
-
-	messageAndCause := strings.ToLower(message + " " + causeStr)
 
 	if strings.Contains(messageAndCause, "circuit breaker") {
 		return llm.CategoryRateLimit
@@ -145,6 +151,10 @@ func categorizeTokenizerError(provider, model, message string, cause error) llm.
 		return llm.CategoryNotFound
 	}
 
+	// Default: Unknown if no cause and no matching patterns, Server otherwise
+	if cause == nil && messageAndCause == "" {
+		return llm.CategoryUnknown
+	}
 	return llm.CategoryServer
 }
 

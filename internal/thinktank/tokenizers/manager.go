@@ -27,7 +27,13 @@ func NewTokenizerManager() TokenizerManager {
 func (m *tokenizerManagerImpl) GetTokenizer(provider string) (AccurateTokenCounter, error) {
 	// Check cache first for fast path
 	if cached, ok := m.tokenizerCache.Load(provider); ok {
-		return cached.(AccurateTokenCounter), nil
+		tokenizer, valid := cached.(AccurateTokenCounter)
+		if !valid {
+			// Cache corrupted - delete invalid entry and fall through to create new
+			m.tokenizerCache.Delete(provider)
+		} else {
+			return tokenizer, nil
+		}
 	}
 
 	// Use mutex to prevent duplicate initialization
@@ -36,7 +42,12 @@ func (m *tokenizerManagerImpl) GetTokenizer(provider string) (AccurateTokenCount
 
 	// Double-check cache after acquiring lock
 	if cached, ok := m.tokenizerCache.Load(provider); ok {
-		return cached.(AccurateTokenCounter), nil
+		tokenizer, valid := cached.(AccurateTokenCounter)
+		if valid {
+			return tokenizer, nil
+		}
+		// Cache corrupted under lock - delete and recreate
+		m.tokenizerCache.Delete(provider)
 	}
 
 	// Create new tokenizer based on provider
@@ -65,6 +76,9 @@ func (m *tokenizerManagerImpl) SupportsProvider(provider string) bool {
 
 // ClearCache clears all cached tokenizers to free memory.
 func (m *tokenizerManagerImpl) ClearCache() {
+	m.initMutex.Lock()
+	defer m.initMutex.Unlock()
+
 	m.tokenizerCache.Range(func(key, value interface{}) bool {
 		// Note: OpenRouter tokenizer wraps OpenAI tokenizer internally
 		// The internal tokenizer will be garbage collected when the wrapper is deleted
