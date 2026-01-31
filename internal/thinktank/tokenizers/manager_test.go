@@ -134,10 +134,13 @@ func TestTokenizerManager_ClearCacheRace(t *testing.T) {
 	for i := 0; i < iterations; i++ {
 		var wg sync.WaitGroup
 		wg.Add(2)
+		errCh := make(chan error, 1)
 
 		go func() {
 			defer wg.Done()
-			_, _ = manager.GetTokenizer("openrouter")
+			if _, err := manager.GetTokenizer("openrouter"); err != nil {
+				errCh <- err
+			}
 		}()
 
 		go func() {
@@ -146,6 +149,11 @@ func TestTokenizerManager_ClearCacheRace(t *testing.T) {
 		}()
 
 		wg.Wait()
+		select {
+		case err := <-errCh:
+			t.Fatalf("GetTokenizer failed: %v", err)
+		default:
+		}
 	}
 }
 
