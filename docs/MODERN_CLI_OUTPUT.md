@@ -160,7 +160,7 @@ git checkout v1.x.x
 go install
 
 # Or download specific release
-curl -L https://github.com/phrazzld/thinktank/releases/download/v1.x.x/thinktank-linux-amd64 -o thinktank
+curl -L https://github.com/misty-step/thinktank/releases/download/v1.x.x/thinktank-linux-amd64 -o thinktank
 ```
 
 ## Migration Guide

@@ -18,7 +18,7 @@ This document establishes patterns and best practices for writing tests that wor
 For new performance tests, use the CI-aware framework in `internal/testutil/perftest`:
 
 ```go
-import "github.com/phrazzld/thinktank/internal/testutil/perftest"
+import "github.com/misty-step/thinktank/internal/testutil/perftest"
 
 func TestPerformance(t *testing.T) {
     // Automatically adjusts thresholds based on environment
@@ -240,7 +240,7 @@ func TestMultipleConfigurations(t *testing.T) {
 Use `testutil` package functions for secure API key handling:
 
 ```go
-import "github.com/phrazzld/thinktank/internal/testutil"
+import "github.com/misty-step/thinktank/internal/testutil"
 
 func TestWithSecureKey(t *testing.T) {
     // Skips test if no test API key provided

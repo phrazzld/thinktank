@@ -637,7 +637,7 @@ When reporting issues, include:
 
 ### Common Support Channels
 
-- **GitHub Issues**: [thinktank issues](https://github.com/phrazzld/thinktank/issues)
+- **GitHub Issues**: [thinktank issues](https://github.com/misty-step/thinktank/issues)
 - **Documentation**: Check existing docs in `/docs` directory
 - **Rate Limiting Guide**: [README.md](../README.md#rate-limiting--performance-optimization)
 - **Error Handling**: [ERROR_HANDLING_AND_LOGGING.md](ERROR_HANDLING_AND_LOGGING.md)
@@ -650,7 +650,7 @@ Before asking for help, try:
 - [ ] You can access provider APIs directly (curl tests)
 - [ ] You've tried with `--dry-run` to test configuration
 - [ ] You've tested with a smaller input set
-- [ ] You've checked recent [GitHub issues](https://github.com/phrazzld/thinktank/issues) for similar problems
+- [ ] You've checked recent [GitHub issues](https://github.com/misty-step/thinktank/issues) for similar problems
 - [ ] You've tried the conservative rate limiting settings shown above
 - [ ] You've enabled `--verbose` logging to see detailed error information
 

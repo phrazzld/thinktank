@@ -26,9 +26,9 @@ builds:
         goarch: arm64
     ldflags:
       - -s -w
-      - -X github.com/phrazzld/thinktank/internal/version.Version={{.Version}}
-      - -X github.com/phrazzld/thinktank/internal/version.Commit={{.Commit}}
-      - -X github.com/phrazzld/thinktank/internal/version.BuildDate={{.Date}}
+      - -X github.com/misty-step/thinktank/internal/version.Version={{.Version}}
+      - -X github.com/misty-step/thinktank/internal/version.Commit={{.Commit}}
+      - -X github.com/misty-step/thinktank/internal/version.BuildDate={{.Date}}
 
 archives:
   - id: default
@@ -52,7 +52,7 @@ changelog:
 
 release:
   github:
-    owner: phrazzld
+    owner: misty-step
     name: thinktank
   # Don't mark as draft - release-please handles release creation
   draft: false
