@@ -146,14 +146,8 @@ func (s *tokenCountingServiceImpl) CountTokensForModel(ctx context.Context, req 
 					isAccurate = false
 				} else {
 					// Successfully used accurate tokenization
-					switch modelInfo.Provider {
-					case "openai":
-						tokenizerUsed = "tiktoken"
-					case "gemini":
-						tokenizerUsed = "sentencepiece"
-					default:
-						tokenizerUsed = "accurate"
-					}
+					// All providers use tiktoken o200k_base via OpenRouter normalization
+					tokenizerUsed = "tiktoken"
 					isAccurate = true
 				}
 			}

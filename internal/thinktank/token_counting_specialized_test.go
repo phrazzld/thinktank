@@ -8,8 +8,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test Gemini tokenizer basic functionality
-func TestTokenCountingService_GeminiTokenizer_BasicEnglish(t *testing.T) {
+// Test tokenizer basic functionality with various models.
+// Note: All models use tiktoken o200k_base via OpenRouter normalization.
+func TestTokenCountingService_ModelTokenizer_BasicEnglish(t *testing.T) {
 	t.Parallel()
 
 	service := NewTokenCountingService()
@@ -19,7 +20,7 @@ func TestTokenCountingService_GeminiTokenizer_BasicEnglish(t *testing.T) {
 		Files: []FileContent{
 			{
 				Path:    "english.txt",
-				Content: "This is basic English text that should be tokenized using SentencePiece.",
+				Content: "This is basic English text that should be tokenized accurately.",
 			},
 		},
 	}
@@ -27,18 +28,16 @@ func TestTokenCountingService_GeminiTokenizer_BasicEnglish(t *testing.T) {
 	result, err := service.CountTokensForModel(context.Background(), req, "gemini-3-flash")
 
 	require.NoError(t, err)
-	assert.Greater(t, result.TotalTokens, 0, "Should count tokens for English text with Gemini")
-	// Note: FileCount is not part of the TokenCountingResult interface
-	// This was removed in the interface design
+	assert.Greater(t, result.TotalTokens, 0, "Should count tokens for English text")
 }
 
-// Test accuracy comparison between Gemini and estimation
-func TestTokenCountingService_GeminiVsEstimation_Comparison(t *testing.T) {
+// Test accuracy comparison between different models.
+// All models use tiktoken o200k_base via OpenRouter, so counts should be similar.
+func TestTokenCountingService_ModelComparison(t *testing.T) {
 	t.Parallel()
 
 	service := NewTokenCountingService()
 
-	// Use content that should show clear differences between tokenizers
 	req := TokenCountingRequest{
 		Instructions: "Compare tokenization accuracy between different methods",
 		Files: []FileContent{
@@ -46,45 +45,41 @@ func TestTokenCountingService_GeminiVsEstimation_Comparison(t *testing.T) {
 				Path: "comparison.txt",
 				Content: `
 This is a comprehensive test of tokenization accuracy across different approaches.
-We're comparing SentencePiece (Gemini) tokenization with character-based estimation.
+We're comparing token counts across different model providers.
 
 Key points to analyze:
 1. Subword tokenization efficiency
-2. Handling of technical terms like "tokenization", "SentencePiece", "subword"
+2. Handling of technical terms like "tokenization", "subword"
 3. Performance with code-like content: func main() { fmt.Println("hello") }
 4. Mixed content with punctuation, numbers (123, 456), and symbols (@#$%)
 
-The expectation is that SentencePiece should provide more accurate token counts
-for this type of mixed content compared to simple character estimation.
+All OpenRouter models are normalized to tiktoken o200k_base encoding,
+so token counts should be consistent across providers.
 `,
 			},
 		},
 	}
 
-	// Get Gemini result (should use SentencePiece)
-	geminiResult, err := service.CountTokensForModel(context.Background(), req, "gemini-3-flash")
+	// Get result for one model
+	result1, err := service.CountTokensForModel(context.Background(), req, "gemini-3-flash")
 	require.NoError(t, err)
+	assert.Greater(t, result1.TotalTokens, 0, "Should count tokens")
 
-	// Verify we got a reasonable result
-	assert.Greater(t, geminiResult.TotalTokens, 0, "Gemini should count some tokens")
-	// Note: FileCount is not part of the TokenCountingResult interface
-	// This was removed in the interface design
+	t.Logf("Model 1 (gemini-3-flash) tokens: %d", result1.TotalTokens)
 
-	t.Logf("Gemini (SentencePiece) tokens: %d", geminiResult.TotalTokens)
-
-	// Test with a different model (should use different tokenizer)
-	estimationResult, err := service.CountTokensForModel(context.Background(), req, "gpt-5.2")
+	// Test with a different model - should use same tiktoken o200k_base
+	result2, err := service.CountTokensForModel(context.Background(), req, "gpt-5.2")
 	require.NoError(t, err)
+	assert.Greater(t, result2.TotalTokens, 0, "Should count tokens")
 
-	assert.Greater(t, estimationResult.TotalTokens, 0, "Estimation should count some tokens")
+	t.Logf("Model 2 (gpt-5.2) tokens: %d", result2.TotalTokens)
 
-	t.Logf("Estimation tokens: %d", estimationResult.TotalTokens)
-
-	// Both should be in reasonable ranges, but might be different
-	// This test documents the behavior rather than asserting specific relationships
+	// Both use tiktoken o200k_base via OpenRouter, counts should be very close
+	// (may differ slightly due to model-specific overhead calculations)
 }
 
-// Test non-English content to demonstrate tokenizer differences
+// Test non-English content to verify Unicode handling.
+// All models use tiktoken o200k_base which handles Unicode well.
 func TestTokenCountingService_NonEnglish_TokenCharacterRatioBreakdown(t *testing.T) {
 	t.Parallel()
 
@@ -142,31 +137,27 @@ func TestTokenCountingService_NonEnglish_TokenCharacterRatioBreakdown(t *testing
 				},
 			}
 
-			// Test with Gemini (SentencePiece)
-			geminiResult, err := service.CountTokensForModel(context.Background(), req, "gemini-3-flash")
-			require.NoError(t, err, "Gemini should handle %s", tt.description)
+			// Test with one model (all use tiktoken o200k_base via OpenRouter)
+			result1, err := service.CountTokensForModel(context.Background(), req, "gemini-3-flash")
+			require.NoError(t, err, "Should handle %s", tt.description)
 
-			// Test with a different model (estimation fallback)
-			estimationResult, err := service.CountTokensForModel(context.Background(), req, "gpt-5.2")
-			require.NoError(t, err, "Estimation should handle %s", tt.description)
+			// Test with another model
+			result2, err := service.CountTokensForModel(context.Background(), req, "gpt-5.2")
+			require.NoError(t, err, "Should handle %s", tt.description)
 
 			// Both should produce token counts
-			assert.Greater(t, geminiResult.TotalTokens, 0, "Gemini should count tokens for %s", tt.description)
-			assert.Greater(t, estimationResult.TotalTokens, 0, "Estimation should count tokens for %s", tt.description)
+			assert.Greater(t, result1.TotalTokens, 0, "Should count tokens for %s", tt.description)
+			assert.Greater(t, result2.TotalTokens, 0, "Should count tokens for %s", tt.description)
 
 			// Calculate character count for comparison
 			charCount := len([]rune(req.Instructions + tt.content))
 
 			t.Logf("%s:", tt.description)
 			t.Logf("  Characters: %d", charCount)
-			t.Logf("  Gemini tokens: %d (ratio: %.2f tokens/char)",
-				geminiResult.TotalTokens, float64(geminiResult.TotalTokens)/float64(charCount))
-			t.Logf("  Estimation tokens: %d (ratio: %.2f tokens/char)",
-				estimationResult.TotalTokens, float64(estimationResult.TotalTokens)/float64(charCount))
-
-			// Document the differences - this test is primarily for observing behavior
-			// rather than asserting specific relationships since different tokenizers
-			// legitimately produce different results
+			t.Logf("  Model 1 tokens: %d (ratio: %.2f tokens/char)",
+				result1.TotalTokens, float64(result1.TotalTokens)/float64(charCount))
+			t.Logf("  Model 2 tokens: %d (ratio: %.2f tokens/char)",
+				result2.TotalTokens, float64(result2.TotalTokens)/float64(charCount))
 		})
 	}
 }
