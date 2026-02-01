@@ -10,7 +10,7 @@ set -euo pipefail
 SCRIPT_NAME="generate-dashboard.sh"
 OUTPUT_DIR="${OUTPUT_DIR:-docs/quality-dashboard}"
 DATA_FILE="${OUTPUT_DIR}/dashboard-data.json"
-REPO="${GITHUB_REPOSITORY:-phrazzld/thinktank}"
+REPO="${GITHUB_REPOSITORY:-misty-step/thinktank}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 MAX_RUNS="${MAX_RUNS:-50}"
 VERBOSE="${VERBOSE:-false}"

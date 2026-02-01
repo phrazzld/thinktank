@@ -12,12 +12,12 @@
 **ACTUAL REALITY**: OSFileSystem methods show **100% coverage**
 
 ```
-github.com/phrazzld/thinktank/internal/cli/run_implementations.go:18:  CreateTemp   100.0%
-github.com/phrazzld/thinktank/internal/cli/run_implementations.go:23:  WriteFile    100.0%
-github.com/phrazzld/thinktank/internal/cli/run_implementations.go:28:  ReadFile     100.0%
-github.com/phrazzld/thinktank/internal/cli/run_implementations.go:33:  Remove       100.0%
-github.com/phrazzld/thinktank/internal/cli/run_implementations.go:38:  MkdirAll     100.0%
-github.com/phrazzld/thinktank/internal/cli/run_implementations.go:43:  OpenFile     100.0%
+github.com/misty-step/thinktank/internal/cli/run_implementations.go:18:  CreateTemp   100.0%
+github.com/misty-step/thinktank/internal/cli/run_implementations.go:23:  WriteFile    100.0%
+github.com/misty-step/thinktank/internal/cli/run_implementations.go:28:  ReadFile     100.0%
+github.com/misty-step/thinktank/internal/cli/run_implementations.go:33:  Remove       100.0%
+github.com/misty-step/thinktank/internal/cli/run_implementations.go:38:  MkdirAll     100.0%
+github.com/misty-step/thinktank/internal/cli/run_implementations.go:43:  OpenFile     100.0%
 ```
 
 **Impact**: This removes one major blocker from the TODO.md plan.

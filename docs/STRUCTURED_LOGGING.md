@@ -35,7 +35,7 @@ The project uses a dual-output logging system that combines clean console output
 import (
     "context"
     "log/slog"
-    "github.com/phrazzld/thinktank/internal/logutil"
+    "github.com/misty-step/thinktank/internal/logutil"
 )
 ```
 
@@ -436,7 +436,7 @@ log.Printf("Error processing request: %v", err)
 import (
     "context"
     "log/slog"
-    "github.com/phrazzld/thinktank/internal/logutil"
+    "github.com/misty-step/thinktank/internal/logutil"
 )
 
 ctx := logutil.WithCorrelationID(context.Background())
