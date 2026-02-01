@@ -40,11 +40,11 @@ type SummaryWriter interface {
 // DefaultSummaryWriter implements the SummaryWriter interface
 type DefaultSummaryWriter struct {
 	logger        logutil.LoggerInterface
-	consoleWriter logutil.ConsoleWriter
+	consoleWriter logutil.SummaryOutput
 }
 
 // NewSummaryWriter creates a new SummaryWriter
-func NewSummaryWriter(logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter) SummaryWriter {
+func NewSummaryWriter(logger logutil.LoggerInterface, consoleWriter logutil.SummaryOutput) SummaryWriter {
 	return &DefaultSummaryWriter{
 		logger:        logger,
 		consoleWriter: consoleWriter,
