@@ -98,6 +98,27 @@ type APIService interface {
 	GetErrorDetails(err error) string
 }
 
+// LLMClientFactory creates provider-agnostic LLM clients.
+type LLMClientFactory interface {
+	InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
+}
+
+// ResponseHandler processes LLM API responses.
+type ResponseHandler interface {
+	ProcessLLMResponse(result *llm.ProviderResult) (string, error)
+	IsEmptyResponseError(err error) bool
+	IsSafetyBlockedError(err error) bool
+	GetErrorDetails(err error) string
+}
+
+// ModelMetadataProvider retrieves model information and parameters.
+type ModelMetadataProvider interface {
+	GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error)
+	GetModelDefinition(ctx context.Context, modelName string) (*models.ModelInfo, error)
+	GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error)
+	ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error)
+}
+
 // ContextStats holds information about processed files and context size
 type ContextStats struct {
 	ProcessedFilesCount int
