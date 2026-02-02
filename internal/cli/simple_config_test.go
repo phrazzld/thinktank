@@ -18,13 +18,17 @@ func TestSimplifiedConfigSize(t *testing.T) {
 	actualSize := unsafe.Sizeof(config)
 
 	// The struct should be compact - much smaller than the 200+ byte CliConfig
-	// Go's alignment may add padding, but the logical data is 33 bytes
-	assert.LessOrEqual(t, actualSize, uintptr(48), "SimplifiedConfig should be ≤48 bytes with alignment")
-	assert.GreaterOrEqual(t, actualSize, uintptr(33), "SimplifiedConfig should be ≥33 bytes of logical data")
+	// With MetricsOutput field: 3 strings (48 bytes) + 2 uint8 (2 bytes) + padding
+	assert.LessOrEqual(t, actualSize, uintptr(64), "SimplifiedConfig should be ≤64 bytes with alignment")
+	assert.GreaterOrEqual(t, actualSize, uintptr(50), "SimplifiedConfig should be ≥50 bytes of logical data")
 
-	// Verify the logical data size is exactly 33 bytes (2 strings + 1 byte)
-	logicalSize := unsafe.Sizeof(config.InstructionsFile) + unsafe.Sizeof(config.TargetPath) + unsafe.Sizeof(config.Flags)
-	assert.Equal(t, uintptr(33), logicalSize, "Logical data size should be exactly 33 bytes")
+	// Verify the logical data size: 3 strings + 2 uint8
+	logicalSize := unsafe.Sizeof(config.InstructionsFile) +
+		unsafe.Sizeof(config.TargetPath) +
+		unsafe.Sizeof(config.MetricsOutput) +
+		unsafe.Sizeof(config.Flags) +
+		unsafe.Sizeof(config.SafetyMargin)
+	assert.Equal(t, uintptr(50), logicalSize, "Logical data size should be exactly 50 bytes")
 }
 
 // TestSimplifiedConfigFields validates the required fields are present

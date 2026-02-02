@@ -16,6 +16,7 @@ import (
 	"github.com/misty-step/thinktank/internal/config"
 	"github.com/misty-step/thinktank/internal/llm"
 	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/metrics"
 	"github.com/misty-step/thinktank/internal/models"
 	"github.com/misty-step/thinktank/internal/pathutil"
 	"github.com/misty-step/thinktank/internal/ratelimit"
@@ -136,7 +137,7 @@ func executeApplication(minimalConfig *config.MinimalConfig, simplifiedConfig *S
 	}
 
 	// Run the application
-	err = runApplication(ctx, minimalConfig, contextLogger, tokenService)
+	err = runApplication(ctx, minimalConfig, contextLogger, tokenService, simplifiedConfig.MetricsOutput)
 	if err != nil {
 		contextLogger.ErrorContext(ctx, "Application error: %v", err)
 		return err
@@ -215,7 +216,7 @@ func setupGracefulShutdown(ctx context.Context, logger logutil.LoggerInterface) 
 }
 
 // runApplication executes the core application logic with MinimalConfig
-func runApplication(ctx context.Context, cfg *config.MinimalConfig, logger logutil.LoggerInterface, tokenService thinktank.TokenCountingService) error {
+func runApplication(ctx context.Context, cfg *config.MinimalConfig, logger logutil.LoggerInterface, tokenService thinktank.TokenCountingService, metricsOutputPath string) error {
 	// Create audit logger
 	var auditLogger auditlog.AuditLogger
 	if cfg.DryRun {
@@ -229,6 +230,25 @@ func runApplication(ctx context.Context, cfg *config.MinimalConfig, logger logut
 		if err != nil {
 			return fmt.Errorf("failed to create audit logger: %w", err)
 		}
+	}
+
+	// Create metrics collector
+	var metricsCollector metrics.Collector
+	var metricsFile *os.File
+	if metricsOutputPath != "" {
+		var err error
+		metricsFile, err = os.Create(metricsOutputPath)
+		if err != nil {
+			return fmt.Errorf("failed to create metrics file: %w", err)
+		}
+		defer func() {
+			if closeErr := metricsFile.Close(); closeErr != nil {
+				logger.WarnContext(ctx, "Failed to close metrics file: %v", closeErr)
+			}
+		}()
+		exporter := metrics.NewJSONLinesExporter(metricsFile)
+		metricsCollector = metrics.NewCollector(exporter)
+		logger.InfoContext(ctx, "Metrics collection enabled, writing to %s", metricsOutputPath)
 	}
 
 	// Log start
@@ -283,10 +303,20 @@ func runApplication(ctx context.Context, cfg *config.MinimalConfig, logger logut
 		Logger:               logger,
 		ConsoleWriter:        consoleWriter,
 		TokenCountingService: tokenService,
+		MetricsCollector:     metricsCollector,
 	})
 
 	// Run orchestrator
-	return orch.Run(ctx, instructions)
+	runErr := orch.Run(ctx, instructions)
+
+	// Flush metrics if collector is active
+	if metricsCollector != nil {
+		if flushErr := metricsCollector.Flush(); flushErr != nil {
+			logger.WarnContext(ctx, "Failed to flush metrics: %v", flushErr)
+		}
+	}
+
+	return runErr
 }
 
 // validateConfig validates the minimal configuration

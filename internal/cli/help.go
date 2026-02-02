@@ -70,6 +70,9 @@ FLAGS:
     --debug            Enable debug-level logging
                        Maximum verbosity for troubleshooting
 
+    --metrics-output FILE  Write execution metrics to FILE in JSON Lines format
+                           Captures timing, throughput, and error data for analysis
+
 EXAMPLES:
     # Basic usage - analyze a single directory
     thinktank instructions.md ./src
