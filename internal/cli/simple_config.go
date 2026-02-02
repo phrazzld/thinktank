@@ -78,6 +78,18 @@ func (s *SimplifiedConfig) Validate() error {
 		return fmt.Errorf("instructions file path too long (max %d characters): %d characters", maxPathLength, len(s.InstructionsFile))
 	}
 
+	// Validate metrics output path
+	if s.MetricsOutput != "" {
+		if len(s.MetricsOutput) > maxPathLength {
+			return fmt.Errorf("metrics output path too long (max %d characters): %d characters", maxPathLength, len(s.MetricsOutput))
+		}
+		// Check for path traversal
+		cleanPath := filepath.Clean(s.MetricsOutput)
+		if strings.Contains(cleanPath, "..") {
+			return fmt.Errorf("metrics output path cannot contain directory traversal (..)")
+		}
+	}
+
 	// 2. Enhanced positional argument validation with file extension checks
 	// For dry-run mode, only validate if instructions file is provided
 	if s.HasFlag(FlagDryRun) {

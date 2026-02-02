@@ -4,6 +4,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"unsafe"
 
@@ -331,6 +332,38 @@ func TestValidate(t *testing.T) {
 			},
 			setup: func() {
 				_ = os.Unsetenv("OPENROUTER_API_KEY")
+			},
+			wantErr: false,
+		},
+		{
+			name: "metrics output path traversal blocked",
+			config: SimplifiedConfig{
+				InstructionsFile: validInstFile,
+				TargetPath:       validTargetDir,
+				MetricsOutput:    "../../../etc/passwd",
+				Flags:            FlagDryRun,
+			},
+			wantErr: true,
+			errMsg:  "metrics output path cannot contain directory traversal",
+		},
+		{
+			name: "metrics output path too long",
+			config: SimplifiedConfig{
+				InstructionsFile: validInstFile,
+				TargetPath:       validTargetDir,
+				MetricsOutput:    strings.Repeat("a", 300),
+				Flags:            FlagDryRun,
+			},
+			wantErr: true,
+			errMsg:  "metrics output path too long",
+		},
+		{
+			name: "valid metrics output path",
+			config: SimplifiedConfig{
+				InstructionsFile: validInstFile,
+				TargetPath:       validTargetDir,
+				MetricsOutput:    "metrics.jsonl",
+				Flags:            FlagDryRun,
 			},
 			wantErr: false,
 		},
