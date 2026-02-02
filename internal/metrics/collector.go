@@ -35,16 +35,30 @@ type DefaultCollector struct {
 	mu       sync.Mutex
 	metrics  []Metric
 	exporter Exporter
-	clock    func() time.Time // for testing
+	clock    func() time.Time // immutable after construction
+}
+
+// CollectorOption configures a DefaultCollector.
+type CollectorOption func(*DefaultCollector)
+
+// WithClock sets a custom clock function (for testing).
+func WithClock(clock func() time.Time) CollectorOption {
+	return func(c *DefaultCollector) {
+		c.clock = clock
+	}
 }
 
 // NewCollector creates a new DefaultCollector with the given exporter.
-func NewCollector(exporter Exporter) *DefaultCollector {
-	return &DefaultCollector{
+func NewCollector(exporter Exporter, opts ...CollectorOption) *DefaultCollector {
+	c := &DefaultCollector{
 		metrics:  make([]Metric, 0),
 		exporter: exporter,
 		clock:    time.Now,
 	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
 }
 
 // RecordDuration records a duration metric in milliseconds.

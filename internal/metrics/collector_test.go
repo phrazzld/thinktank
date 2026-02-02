@@ -9,9 +9,8 @@ import (
 )
 
 func TestDefaultCollector_RecordDuration(t *testing.T) {
-	c := NewCollector(nil)
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	c.clock = func() time.Time { return fixedTime }
+	c := NewCollector(nil, WithClock(func() time.Time { return fixedTime }))
 
 	c.RecordDuration("api_latency_ms", 150*time.Millisecond, "model", "gpt-4o")
 
@@ -39,21 +38,20 @@ func TestDefaultCollector_RecordDuration(t *testing.T) {
 }
 
 func TestDefaultCollector_StartTimer(t *testing.T) {
-	c := NewCollector(nil)
 	callCount := 0
 	times := []time.Time{
 		time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),         // StartTimer start
 		time.Date(2024, 1, 15, 10, 30, 1, 0, time.UTC),         // stop() calculates duration
 		time.Date(2024, 1, 15, 10, 30, 1, 500000000, time.UTC), // RecordDuration timestamp
 	}
-	c.clock = func() time.Time {
+	c := NewCollector(nil, WithClock(func() time.Time {
 		idx := callCount
 		if idx >= len(times) {
 			idx = len(times) - 1
 		}
 		callCount++
 		return times[idx]
-	}
+	}))
 
 	stop := c.StartTimer("operation_ms", "op", "test")
 	stop()
@@ -134,9 +132,8 @@ func TestDefaultCollector_SetGauge(t *testing.T) {
 func TestDefaultCollector_Flush(t *testing.T) {
 	var buf bytes.Buffer
 	exporter := NewJSONLinesExporter(&buf)
-	c := NewCollector(exporter)
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	c.clock = func() time.Time { return fixedTime }
+	c := NewCollector(exporter, WithClock(func() time.Time { return fixedTime }))
 
 	c.RecordDuration("api_latency_ms", 100*time.Millisecond, "model", "gpt-4o")
 	c.IncrCounter("requests_total")
