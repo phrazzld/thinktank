@@ -81,6 +81,7 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config interfaces.
 	}
 
 	// Gather project context
+	cg.consoleWriter.StatusMessage("Scanning files...")
 	contextFiles, processedFilesCount, err := fileutil.GatherProjectContext(config.Paths, fileConfig)
 
 	// Calculate duration in milliseconds
@@ -139,6 +140,7 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config interfaces.
 	if processedFilesCount > 0 {
 		cg.logger.InfoContext(ctx, "Context gathered: %d files, %d lines, %d chars",
 			processedFilesCount, lineCount, charCount)
+		cg.consoleWriter.StatusMessage(fmt.Sprintf("Context gathered: %d files, %d lines, %d chars", processedFilesCount, lineCount, charCount))
 
 		// Additional detailed debug information if needed
 		if config.LogLevel == logutil.DebugLevel && !cg.dryRun {
