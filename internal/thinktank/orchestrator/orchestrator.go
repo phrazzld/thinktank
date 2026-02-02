@@ -15,6 +15,7 @@ import (
 	"github.com/misty-step/thinktank/internal/fileutil"
 	"github.com/misty-step/thinktank/internal/llm"
 	"github.com/misty-step/thinktank/internal/logutil"
+	"github.com/misty-step/thinktank/internal/metrics"
 	"github.com/misty-step/thinktank/internal/models"
 	"github.com/misty-step/thinktank/internal/ratelimit"
 	"github.com/misty-step/thinktank/internal/thinktank/interfaces"
@@ -37,6 +38,7 @@ type Orchestrator struct {
 	outputWriter         OutputWriter
 	summaryWriter        SummaryWriter
 	tokenCountingService interfaces.TokenCountingService
+	metricsCollector     metrics.Collector                 // Optional metrics collector for observability
 	modelRateLimiters    map[string]*ratelimit.RateLimiter // Per-model rate limiters for models with specific concurrency limits
 	rateLimiterMutex     sync.RWMutex                      // Protects modelRateLimiters map
 }
@@ -52,6 +54,7 @@ type OrchestratorDeps struct {
 	Logger               logutil.LoggerInterface
 	ConsoleWriter        logutil.ConsoleWriter
 	TokenCountingService interfaces.TokenCountingService
+	MetricsCollector     metrics.Collector // Optional: nil disables metrics collection
 }
 
 // NewOrchestrator creates a new instance of the Orchestrator.
@@ -97,6 +100,12 @@ func NewOrchestrator(deps OrchestratorDeps) *Orchestrator {
 	if deps.Config.SynthesisModel != "" {
 		synthesisService = NewSynthesisService(deps.APIService, deps.AuditLogger, deps.Logger, deps.Config.SynthesisModel)
 	}
+	// Use noop collector if none provided
+	metricsCollector := deps.MetricsCollector
+	if metricsCollector == nil {
+		metricsCollector = metrics.NewNoopCollector()
+	}
+
 	return &Orchestrator{
 		apiService:           deps.APIService,
 		contextGatherer:      deps.ContextGatherer,
@@ -110,6 +119,7 @@ func NewOrchestrator(deps OrchestratorDeps) *Orchestrator {
 		outputWriter:         outputWriter,
 		summaryWriter:        summaryWriter,
 		tokenCountingService: deps.TokenCountingService,
+		metricsCollector:     metricsCollector,
 		modelRateLimiters:    make(map[string]*ratelimit.RateLimiter),
 	}
 }
@@ -188,19 +198,35 @@ func (o *Orchestrator) getRateLimiterForModel(modelName string) *ratelimit.RateL
 // Each step is delegated to a specialized helper method, making the workflow
 // clear and maintainable.
 func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
+	// Start total execution timer
+	stopTotalTimer := o.metricsCollector.StartTimer("total_duration_ms")
+	defer stopTotalTimer()
+
 	// Setup: initialize context and validate configuration
 	ctx, contextLogger, err := o.setupContext(ctx)
 	if err != nil {
+		o.metricsCollector.IncrCounter("execution_errors_total", "phase", "setup")
 		return err
 	}
 
 	// Welcome message to the user
 	o.consoleWriter.StatusMessage("Starting thinktank processing...")
+
 	// Step 1: Gather file context for the prompt
+	stopContextTimer := o.metricsCollector.StartTimer("context_gather_duration_ms")
 	contextFiles, contextStats, err := o.gatherProjectContext(ctx)
+	stopContextTimer()
 	if err != nil {
+		o.metricsCollector.IncrCounter("execution_errors_total", "phase", "context_gather")
 		contextLogger.ErrorContext(ctx, "Failed to gather project context: %v", err)
 		return err
+	}
+
+	// Record context gathering metrics
+	if contextStats != nil {
+		o.metricsCollector.SetGauge("files_processed", float64(contextStats.ProcessedFilesCount))
+		o.metricsCollector.SetGauge("context_chars", float64(contextStats.CharCount))
+		o.metricsCollector.SetGauge("context_lines", float64(contextStats.LineCount))
 	}
 	// Step 2: Handle dry run mode (short-circuit if enabled)
 	if dryRunExecuted, err := o.runDryRunFlow(ctx, contextStats); err != nil {
@@ -210,13 +236,25 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	}
 	// Step 3: Build the complete prompt
 	stitchedPrompt := o.buildPrompt(ctx, instructions, contextFiles)
+
 	// Step 4: Process all models and handle errors
+	stopModelTimer := o.metricsCollector.StartTimer("model_processing_duration_ms")
 	modelOutputs, processingErr, criticalErr := o.processModelsWithErrorHandling(ctx, stitchedPrompt, contextLogger)
+	stopModelTimer()
+
+	// Record model processing metrics
+	o.metricsCollector.SetGauge("models_total", float64(len(o.config.ModelNames)))
+	o.metricsCollector.SetGauge("models_successful", float64(len(modelOutputs)))
+
 	if criticalErr != nil {
+		o.metricsCollector.IncrCounter("execution_errors_total", "phase", "model_processing")
 		return criticalErr
 	}
+
 	// Step 5: Save outputs (via synthesis or individually)
+	stopOutputTimer := o.metricsCollector.StartTimer("output_save_duration_ms")
 	outputInfo, fileSaveErr := o.handleOutputFlow(ctx, instructions, modelOutputs)
+	stopOutputTimer()
 	// Step 6: Generate and display the execution summary
 	summary := o.generateResultsSummary(modelOutputs, outputInfo, processingErr)
 	o.summaryWriter.DisplaySummary(ctx, summary)

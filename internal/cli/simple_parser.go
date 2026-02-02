@@ -45,6 +45,7 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 	// First pass: separate positional args from flags
 	var instructionsFile string
 	var targetPaths []string
+	var metricsOutput string
 	flags := uint8(0)
 	safetyMargin := uint8(10) // Default 10% safety margin
 
@@ -134,6 +135,22 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 			}
 			safetyMargin = parsedMargin
 
+		case arg == "--metrics-output":
+			// --metrics-output flag requires a value
+			if i+1 >= len(args) {
+				return nil, fmt.Errorf("--metrics-output flag requires a value")
+			}
+			i++
+			metricsOutput = args[i]
+
+		case strings.HasPrefix(arg, "--metrics-output="):
+			// Handle --metrics-output=value format
+			value := strings.TrimPrefix(arg, "--metrics-output=")
+			if value == "" {
+				return nil, fmt.Errorf("--metrics-output flag requires a non-empty value")
+			}
+			metricsOutput = value
+
 		case strings.HasPrefix(arg, "--"):
 			// Unknown flag - fail fast with clear error message
 			return nil, fmt.Errorf("unknown flag: %s", arg)
@@ -171,6 +188,7 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 	config := &SimplifiedConfig{
 		InstructionsFile: instructionsFile,
 		TargetPath:       targetPath,
+		MetricsOutput:    metricsOutput,
 		Flags:            flags,
 		SafetyMargin:     safetyMargin,
 	}

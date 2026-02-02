@@ -10,22 +10,15 @@ import (
 	"github.com/misty-step/thinktank/internal/models"
 )
 
-// SimplifiedConfig represents the essential configuration in exactly 34 bytes.
+// SimplifiedConfig represents the essential configuration.
 // Following Go's principle of "less is more", this struct contains only the
 // absolutely necessary fields with smart defaults for everything else.
-//
-// Memory layout (34 bytes total on 64-bit systems):
-// - InstructionsFile: 16 bytes (string header: ptr+len)
-// - TargetPath: 16 bytes (string header: ptr+len)
-// - Flags: 1 byte (bitfield for DryRun|Verbose|Synthesis)
-// - SafetyMargin: 1 byte (percentage 0-100)
 type SimplifiedConfig struct {
-	InstructionsFile string // 16 bytes (pointer + length on 64-bit)
-	TargetPath       string // 16 bytes (pointer + length on 64-bit)
-	Flags            uint8  // 1 byte bitfield
-	SafetyMargin     uint8  // 1 byte - safety margin percentage (0-50%)
-	// Note: Actual struct size may include padding. The 34-byte target
-	// refers to the logical data size, not the Go struct alignment.
+	InstructionsFile string // Path to instructions file
+	TargetPath       string // Space-joined target paths
+	MetricsOutput    string // Path for metrics output (empty = disabled)
+	Flags            uint8  // Bitfield for boolean flags
+	SafetyMargin     uint8  // Safety margin percentage (0-50%)
 }
 
 // Flag constants for bitwise operations - O(1) validation
@@ -83,6 +76,18 @@ func (s *SimplifiedConfig) Validate() error {
 
 	if s.InstructionsFile != "" && len(s.InstructionsFile) > maxPathLength {
 		return fmt.Errorf("instructions file path too long (max %d characters): %d characters", maxPathLength, len(s.InstructionsFile))
+	}
+
+	// Validate metrics output path
+	if s.MetricsOutput != "" {
+		if len(s.MetricsOutput) > maxPathLength {
+			return fmt.Errorf("metrics output path too long (max %d characters): %d characters", maxPathLength, len(s.MetricsOutput))
+		}
+		// Check for path traversal
+		cleanPath := filepath.Clean(s.MetricsOutput)
+		if strings.Contains(cleanPath, "..") {
+			return fmt.Errorf("metrics output path cannot contain directory traversal (..)")
+		}
 	}
 
 	// 2. Enhanced positional argument validation with file extension checks

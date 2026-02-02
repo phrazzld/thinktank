@@ -413,6 +413,10 @@ func (o *Orchestrator) processModelWithRateLimit(
 		result.err = err
 		result.duration = time.Since(totalStart)
 
+		// Record per-model failure metrics
+		o.metricsCollector.RecordDuration("model_duration_ms", result.duration, "model", modelName, "status", "failed")
+		o.metricsCollector.IncrCounter("models_processed_total", "model", modelName, "status", "failed")
+
 		// Update status to failed
 		errorMsg := o.getUserFriendlyErrorMessage(err, modelName)
 		o.consoleWriter.UpdateModelStatus(modelName, logutil.StatusFailed, result.duration, errorMsg)
@@ -428,6 +432,10 @@ func (o *Orchestrator) processModelWithRateLimit(
 	// Store content and duration
 	result.content = content
 	result.duration = time.Since(totalStart)
+
+	// Record per-model metrics
+	o.metricsCollector.RecordDuration("model_duration_ms", result.duration, "model", modelName, "status", "success")
+	o.metricsCollector.IncrCounter("models_processed_total", "model", modelName, "status", "success")
 
 	// Update status to completed
 	o.consoleWriter.UpdateModelStatus(modelName, logutil.StatusCompleted, result.duration, "")

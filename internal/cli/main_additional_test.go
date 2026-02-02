@@ -243,7 +243,7 @@ func TestRunApplicationDryRun(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a mock token service for testing
 			tokenService := thinktank.NewTokenCountingService()
-			err := runApplication(ctx, tt.config, logger, tokenService)
+			err := runApplication(ctx, tt.config, logger, tokenService, "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("runApplication() error = %v, wantErr %v", err, tt.wantErr)
 			}
