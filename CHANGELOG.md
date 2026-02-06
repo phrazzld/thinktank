@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.0](https://github.com/misty-step/thinktank/compare/v3.1.1...v3.2.0) (2026-02-06)
+
+
+### Features
+
+* add observability infrastructure (metrics collection) ([#141](https://github.com/misty-step/thinktank/issues/141)) ([#194](https://github.com/misty-step/thinktank/issues/194)) ([ce8b883](https://github.com/misty-step/thinktank/commit/ce8b883a74fe2f7f3f35d16432bf02404b6c81b4))
+
 ## [3.1.1](https://github.com/misty-step/thinktank/compare/v3.1.0...v3.1.1) (2026-01-30)
 
 
