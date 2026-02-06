@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.3.0](https://github.com/misty-step/thinktank/compare/v3.2.0...v3.3.0) (2026-02-06)
+
+
+### Features
+
+* **ux:** add loading indicator during context gathering phase ([#132](https://github.com/misty-step/thinktank/issues/132)) ([#195](https://github.com/misty-step/thinktank/issues/195)) ([606cf0f](https://github.com/misty-step/thinktank/commit/606cf0fa414a148e47aa690f544484fb828aae1c))
+
 ## [3.2.0](https://github.com/misty-step/thinktank/compare/v3.1.1...v3.2.0) (2026-02-06)
 
 
